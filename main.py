@@ -43,12 +43,14 @@ vel_y = 0
 gravidade = 0.7
 no_chao = True
 
+tempo_pulo = 0
+
 obstaculos = []
 blocos = []
 
 clock = pygame.time.Clock()
 rodando = True
-velocidade = 6
+velocidade_base = 6  # 🔥 base da velocidade
 
 pontos = 0
 fonte = pygame.font.SysFont(None, 36)
@@ -71,10 +73,18 @@ while rodando:
         if evento.type == pygame.QUIT:
             rodando = False
 
-        if evento.type == pygame.KEYDOWN:
-            if evento.key == pygame.K_SPACE and no_chao:
-                vel_y = -15
-                no_chao = False
+    # 🔥 PULO VARIÁVEL
+    teclas = pygame.key.get_pressed()
+
+    if teclas[pygame.K_SPACE] and no_chao:
+        vel_y = -15
+        no_chao = False
+        tempo_pulo = 0
+
+    if teclas[pygame.K_SPACE] and not no_chao:
+        if tempo_pulo < 10:
+            vel_y -= 0.5
+            tempo_pulo += 1
 
     vel_y += gravidade
     player_y += vel_y
@@ -91,7 +101,7 @@ while rodando:
 
     if len(blocos) == 0:
         if len(obstaculos) > 0 and obstaculos[-1][0] < 500:
-            if random.randint(0, 100) < 25:  # 🔥 MAIS CHANCE
+            if random.randint(0, 100) < 25:
 
                 quantidade = random.randint(3, 5)
 
@@ -100,6 +110,8 @@ while rodando:
                     y = 300 - (i * 30)
 
                     blocos.append([x, y])
+
+    velocidade = velocidade_base + (pontos / 1000) * 0.5
 
     for obs in obstaculos:
         obs[0] -= velocidade
