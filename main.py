@@ -136,8 +136,6 @@ while rodando:
             tela.blit(texto, (250, y))
             y += 30
 
-    # (seu código permanece igual até a parte do JOGO)
-
     # ===== JOGO =====
     elif estado == "jogo":
 
@@ -153,7 +151,7 @@ while rodando:
 
         teclas = pygame.key.get_pressed()
 
-        # PULO VARIÁVEL
+        # PULO
         if teclas[pygame.K_SPACE] and jogo["no_chao"]:
             jogo["vel_y"] = -15
             jogo["no_chao"] = False
@@ -188,7 +186,6 @@ while rodando:
                         y = 300 - (i * 30)
                         jogo["blocos"].append([x, y])
 
-        # VELOCIDADE
         velocidade = jogo["velocidade_base"] + (jogo["pontos"] / 1000) * 0.5
 
         for obs in jogo["obstaculos"]:
@@ -202,7 +199,7 @@ while rodando:
 
         player_rect = pygame.Rect(jogo["player_x"], jogo["player_y"], 60, 60)
 
-        # ===== COLISÃO (CORRIGIDO) =====
+        # COLISÃO
         for obs in jogo["obstaculos"]:
             if player_rect.colliderect(pygame.Rect(obs[0], obs[1], 50, 50)):
                 salvar_ranking(nome_jogador, jogo["pontos"])
@@ -210,7 +207,6 @@ while rodando:
                 estado = "game_over"
                 break
 
-        # 🔥 ISSO AQUI RESOLVE O BUG
         if estado == "game_over":
             continue
 
@@ -226,7 +222,6 @@ while rodando:
 
         jogo["pontos"] += 1
 
-        # DESENHO
         tela.blit(player_img, (jogo["player_x"], jogo["player_y"]))
 
         for obs in jogo["obstaculos"]:
@@ -239,5 +234,20 @@ while rodando:
 
         texto = fonte.render(f"Pontos: {jogo['pontos']}", True, PRETO)
         tela.blit(texto, (10, 10))
+
+    # ===== GAME OVER =====
+    elif estado == "game_over":
+        tela.fill(BRANCO)
+
+        msg = fonte_grande.render("GAME OVER", True, PRETO)
+        tela.blit(msg, (250, 120))
+
+        pontos = fonte.render(f"Pontos: {jogo['pontos']}", True, PRETO)
+        tela.blit(pontos, (300, 200))
+
+        voltar = fonte.render("Pressione ENTER", True, PRETO)
+        tela.blit(voltar, (270, 250))
+
+    pygame.display.flip()
 
 pygame.quit()
