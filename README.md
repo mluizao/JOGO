@@ -121,3 +121,51 @@ Condições:
 ---
 
 ## 11. Estrutura do Projeto
+JOGO/
+│── main.py
+│── ranking.txt
+│── README.md
+│
+└── assets/
+└── imagens/
+├── bloco.png
+├── fundo.png
+├── obstaculo.png
+└── player.png
+---
+
+12. Funcionalidades Mínimas
+Para a primeira versão:
+- Personagem pulando
+- Obstáculos funcionando
+- Colisão detectando
+- Sistema de pontuação
+- Game Over
+
+---
+
+13. Melhorias Futuras
+- Novos cenários:
+  - Cidade à noite (Homem-Aranha)
+  - Esgoto (Hulk)
+  - Mundo da Barbie
+- Sistema de fases
+- História no início do jogo
+- Resgate da Barbie
+- Novos controles (setas)
+- Sistema de vidas
+- Interface mais bonita
+
+---
+
+14. Storyboard do Jogo
+1. Introdução com uma pequena história  
+2. 🌃 Fase 1: Cidade (Homem-Aranha)  
+3. O personagem cai no esgoto durante a fuga  
+4. 🧪 Transformação: ele se transforma no Hulk  
+5. 🧪 Fase 2: Esgoto (Hulk)  
+6. O personagem é capturado/abduzido por uma nave 👽  
+7. 🎀 Fase 3: Mundo da Barbie  
+8. Objetivo: salvar a Barbie  
+9. Levar a Barbie até o castelo 🏰  
+10. Final do jogo  
