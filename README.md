@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/imagens/capa.png" alt="Jump Spider Man Banner">
+</p>
+
 🕷️ Jump Spider Man
 
 1. Descrição Geral
