@@ -1,159 +1,425 @@
 import pygame
 import random
 
+from player import Player
+from ranking import *
+
 pygame.init()
 
+# ===== CONFIG =====
 LARGURA = 800
-ALTURA = 400
+ALTURA = 500
+
 tela = pygame.display.set_mode((LARGURA, ALTURA))
-pygame.display.set_caption("Homem-Aranha: Salto Radical")
+
+pygame.display.set_caption(
+       "jump:spider-man "
+)
+
+clock = pygame.time.Clock()
 
 BRANCO = (255, 255, 255)
 PRETO = (0, 0, 0)
 
+fonte = pygame.font.SysFont(None, 36)
+fonte_grande = pygame.font.SysFont(None, 60)
+
+# ===== IMAGENS =====
 try:
-    player_img = pygame.image.load("assets/imagens/player.png")
-    player_img = pygame.transform.scale(player_img, (60, 60))
 
-    obstaculo_img = pygame.image.load("assets/imagens/obstaculo.png")
-    obstaculo_img = pygame.transform.scale(obstaculo_img, (50, 50))
+    player_img = pygame.image.load(
+        "assets/imagens/player.png"
+    )
 
-    fundo_img = pygame.image.load("assets/imagens/fundo.png")
-    fundo_img = pygame.transform.scale(fundo_img, (800, 400))
+    player_img = pygame.transform.scale(
+        player_img,
+        (60, 60)
+    )
 
-    bloco_img = pygame.image.load("assets/imagens/bloco.png")
-    bloco_img = pygame.transform.scale(bloco_img, (60, 20))
+    obstaculo_img = pygame.image.load(
+        "assets/imagens/obstaculo.png"
+    )
+
+    obstaculo_img = pygame.transform.scale(
+        obstaculo_img,
+        (50, 50)
+    )
+
+    fundo_img = pygame.image.load(
+        "assets/imagens/fundo.png"
+    )
+
+    fundo_img = pygame.transform.scale(
+        fundo_img,
+        (800, 500)
+    )
+
+    bloco_img = pygame.image.load(
+        "assets/imagens/bloco.png"
+    )
+
+    bloco_img = pygame.transform.scale(
+        bloco_img,
+        (60, 20)
+    )
 
 except:
+
     player_img = pygame.Surface((60, 60))
     player_img.fill((255, 0, 0))
 
     obstaculo_img = pygame.Surface((50, 50))
     obstaculo_img.fill((0, 0, 0))
 
-    fundo_img = pygame.Surface((800, 400))
+    fundo_img = pygame.Surface((800, 500))
     fundo_img.fill((200, 200, 200))
 
     bloco_img = pygame.Surface((60, 20))
     bloco_img.fill((255, 255, 255))
 
-player_x = 100
-player_y = 300
-vel_y = 0
-gravidade = 0.7
-no_chao = True
+# ===== PLAYER =====
+player = Player(player_img)
 
-tempo_pulo = 0
-
+# ===== VARIÁVEIS =====
 obstaculos = []
 blocos = []
 
-clock = pygame.time.Clock()
-rodando = True
-velocidade_base = 6  # 🔥 base da velocidade
-
 pontos = 0
-fonte = pygame.font.SysFont(None, 36)
 
 fundo_x = 0
 
+estado = "menu"
+
+mostrar_ranking = False
+
+nome_jogador = ""
+
+rodando = True
+
+# ===== TEXTO =====
+def desenhar_texto(texto, fonte, cor, x, y):
+
+    img = fonte.render(texto, True, cor)
+
+    tela.blit(img, (x, y))
+
+
+# ===== RESET =====
+def resetar_jogo():
+
+    global player
+    global obstaculos
+    global blocos
+    global pontos
+    global fundo_x
+
+    player = Player(player_img)
+
+    obstaculos = []
+
+    blocos = []
+
+    pontos = 0
+
+    fundo_x = 0
+
+
+# ===== LOOP =====
 while rodando:
+
     clock.tick(60)
 
-    player_y_anterior = player_y
+    # ================= MENU =================
+    if estado == "menu":
 
-    fundo_x -= 2
-    if fundo_x <= -800:
-        fundo_x = 0
+        tela.fill(BRANCO)
 
-    tela.blit(fundo_img, (fundo_x, 0))
-    tela.blit(fundo_img, (fundo_x + 800, 0))
+        desenhar_texto(
+            "jump: spider-man",
+            fonte_grande,
+            PRETO,
+            80,
+            80
+        )
 
-    for evento in pygame.event.get():
-        if evento.type == pygame.QUIT:
-            rodando = False
+        desenhar_texto(
+            "Digite seu nome:",
+            fonte,
+            PRETO,
+            260,
+            170
+        )
 
-    # 🔥 PULO VARIÁVEL
-    teclas = pygame.key.get_pressed()
+        desenhar_texto(
+            nome_jogador,
+            fonte,
+            PRETO,
+            260,
+            210
+        )
 
-    if teclas[pygame.K_SPACE] and no_chao:
-        vel_y = -15
-        no_chao = False
-        tempo_pulo = 0
+        desenhar_texto(
+            "ENTER = Jogar",
+            fonte,
+            PRETO,
+            280,
+            270
+        )
 
-    if teclas[pygame.K_SPACE] and not no_chao:
-        if tempo_pulo < 10:
-            vel_y -= 0.5
-            tempo_pulo += 1
+        desenhar_texto(
+            "R = Ver Ranking",
+            fonte,
+            PRETO,
+            260,
+            320
+        )
 
-    vel_y += gravidade
-    player_y += vel_y
+        if mostrar_ranking:
 
-    no_chao = False
+            ranking = carregar_ranking()
 
-    if player_y >= 300:
-        player_y = 300
-        vel_y = 0
-        no_chao = True
+            y = 370
 
-    if len(obstaculos) == 0 or obstaculos[-1][0] < 450:
-        obstaculos.append([800, 310])
+            desenhar_texto(
+                "TOP 5",
+                fonte,
+                PRETO,
+                340,
+                y
+            )
 
-    if len(blocos) == 0:
-        if len(obstaculos) > 0 and obstaculos[-1][0] < 500:
-            if random.randint(0, 100) < 25:
+            y += 40
 
-                quantidade = random.randint(3, 5)
+            for i, dado in enumerate(ranking):
 
-                for i in range(quantidade):
-                    x = 800 + (i * 65)
-                    y = 300 - (i * 30)
+                nome = dado[0]
+                score = dado[1]
 
-                    blocos.append([x, y])
+                desenhar_texto(
+                    f"{i+1}° - {nome}: {score}",
+                    fonte,
+                    PRETO,
+                    250,
+                    y
+                )
 
-    velocidade = velocidade_base + (pontos / 1000) * 0.5
+                y += 35
 
-    for obs in obstaculos:
-        obs[0] -= velocidade
+        pygame.display.update()
 
-    for bloco in blocos:
-        bloco[0] -= velocidade
+        for evento in pygame.event.get():
 
-    obstaculos = [o for o in obstaculos if o[0] > -50]
-    blocos = [b for b in blocos if b[0] > -60]
+            if evento.type == pygame.QUIT:
 
-    player_rect = pygame.Rect(player_x, player_y, 60, 60)
+                rodando = False
 
-    for obs in obstaculos:
-        if player_rect.colliderect(pygame.Rect(obs[0], obs[1], 50, 50)):
-            print("GAME OVER")
-            pygame.time.delay(1000)
-            rodando = False
+            if evento.type == pygame.KEYDOWN:
 
-    for bloco in blocos:
-        bloco_rect = pygame.Rect(bloco[0], bloco[1], 60, 20)
+                if evento.key == pygame.K_RETURN:
 
-        if player_rect.colliderect(bloco_rect):
-            if vel_y > 0 and player_y_anterior + 60 <= bloco_rect.top + 15:
-                player_y = bloco_rect.top - 60
-                vel_y = 0
-                no_chao = True
+                    if nome_jogador != "":
 
-    pontos += 1
+                        resetar_jogo()
 
-    texto = fonte.render(f"Pontos: {pontos}", True, PRETO)
+                        estado = "jogo"
 
-    tela.blit(player_img, (player_x, player_y))
+                elif evento.key == pygame.K_r:
 
-    for obs in obstaculos:
-        tela.blit(obstaculo_img, (obs[0], obs[1]))
+                    mostrar_ranking = not mostrar_ranking
 
-    for bloco in blocos:
-        tela.blit(bloco_img, (bloco[0], bloco[1]))
+                elif evento.key == pygame.K_BACKSPACE:
 
-    pygame.draw.rect(tela, PRETO, (0, 360, 800, 40))
-    tela.blit(texto, (10, 10))
+                    nome_jogador = nome_jogador[:-1]
 
-    pygame.display.update()
+                else:
+
+                    if len(nome_jogador) < 10:
+
+                        nome_jogador += evento.unicode
+
+    # ================= JOGO =================
+    elif estado == "jogo":
+
+        fundo_x -= 2
+
+        if fundo_x <= -800:
+
+            fundo_x = 0
+
+        tela.blit(fundo_img, (fundo_x, 0))
+
+        tela.blit(fundo_img, (fundo_x + 800, 0))
+
+        for evento in pygame.event.get():
+
+            if evento.type == pygame.QUIT:
+
+                rodando = False
+
+        teclas = pygame.key.get_pressed()
+
+        player.pular(teclas)
+
+        player_y_anterior = player.y
+
+        player.atualizar()
+
+        # ===== OBSTÁCULOS =====
+        if len(obstaculos) == 0 or obstaculos[-1][0] < 450:
+
+            obstaculos.append([800, 390])
+
+        # ===== BLOCOS =====
+        if len(blocos) == 0:
+
+            if len(obstaculos) > 0:
+
+                if obstaculos[-1][0] < 500:
+
+                    if random.randint(0, 100) < 25:
+
+                        quantidade = random.randint(3, 5)
+
+                        for i in range(quantidade):
+
+                            x = 800 + (i * 65)
+
+                            y = 380 - (i * 30)
+
+                            blocos.append([x, y])
+
+        velocidade = 6 + (pontos / 1000) * 0.5
+
+        for obs in obstaculos:
+
+            obs[0] -= velocidade
+
+        for bloco in blocos:
+
+            bloco[0] -= velocidade
+
+        obstaculos = [
+            o for o in obstaculos if o[0] > -50
+        ]
+
+        blocos = [
+            b for b in blocos if b[0] > -60
+        ]
+
+        player_rect = player.rect()
+
+        # ===== COLISÃO =====
+        for obs in obstaculos:
+
+            obs_rect = pygame.Rect(
+                obs[0],
+                obs[1],
+                50,
+                50
+            )
+
+            if player_rect.colliderect(obs_rect):
+
+                salvar_ranking(
+                    nome_jogador,
+                    pontos
+                )
+
+                estado = "gameover"
+
+        # ===== BLOCOS =====
+        for bloco in blocos:
+
+            bloco_rect = pygame.Rect(
+                bloco[0],
+                bloco[1],
+                60,
+                20
+            )
+
+            if player_rect.colliderect(bloco_rect):
+
+                if (
+                    player.vel_y > 0
+                    and player_y_anterior + 60
+                    <= bloco_rect.top + 15
+                ):
+
+                    player.y = bloco_rect.top - 60
+
+                    player.vel_y = 0
+
+                    player.no_chao = True
+
+        pontos += 1
+
+        texto = fonte.render(
+            f"Pontos: {pontos}",
+            True,
+            PRETO
+        )
+
+        player.desenhar(tela)
+
+        for obs in obstaculos:
+
+            tela.blit(
+                obstaculo_img,
+                (obs[0], obs[1])
+            )
+
+        for bloco in blocos:
+
+            tela.blit(
+                bloco_img,
+                (bloco[0], bloco[1])
+            )
+
+        tela.blit(texto, (10, 10))
+
+        pygame.display.update()
+
+    # ================= GAME OVER =================
+    elif estado == "gameover":
+
+        tela.fill(BRANCO)
+
+        desenhar_texto(
+            "GAME OVER",
+            fonte_grande,
+            PRETO,
+            220,
+            120
+        )
+
+        desenhar_texto(
+            f"PONTOS: {pontos}",
+            fonte,
+            PRETO,
+            300,
+            220
+        )
+
+        desenhar_texto(
+            "ENTER = Menu",
+            fonte,
+            PRETO,
+            280,
+            300
+        )
+
+        pygame.display.update()
+
+        for evento in pygame.event.get():
+
+            if evento.type == pygame.QUIT:
+
+                rodando = False
+
+            if evento.type == pygame.KEYDOWN:
+
+                if evento.key == pygame.K_RETURN:
+
+                    estado = "menu"
 
 pygame.quit()
