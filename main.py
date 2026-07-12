@@ -20,6 +20,8 @@ pygame.display.set_caption(
 
 clock = pygame.time.Clock()
 
+pygame.display.set_caption("jump Homem-Aranha")
+
 PRETO = (0, 0, 0)
 BRANCO = (255, 255, 255)
 
@@ -144,8 +146,8 @@ while rodando:
 
     # ===== MENU =====
     if estado == "menu":
-        titulo = fonte_grande.render("SALTO RADICAL", True, PRETO)
-        tela.blit(titulo, (200, 50))
+        titulo = fonte_grande.render("JUMP HOMEM ARANHA", True, PRETO)
+        tela.blit(titulo, (150, 50))
 
         texto_nome = fonte.render(f"Nome: {nome_jogador}", True, PRETO)
         tela.blit(texto_nome, (250, 150))
