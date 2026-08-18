@@ -8,5 +8,21 @@ luizao:123
 luluzinha:986
 camicaze:106
 camicaze:559
+<<<<<<< HEAD
 lulu:1010
 allyce:114
+=======
+gleidswon:328
+lays :486
+allyce:486
+allyce :649
+allyce :594
+ian:1328
+llyce:1583
+luiza:1453
+sara :1253
+sara2:322
+sara2:700
+sara2:321
+sara2:2171
+>>>>>>> ec5809ecbf6554945d35e36a79e63d64ac557691
