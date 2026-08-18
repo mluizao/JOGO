@@ -2,13 +2,16 @@ import pygame
 import random
 
 from player import Player
-from ranking import *
+from ranking import carregar_ranking, salvar_ranking
+
+from cortina import (
+    converter_mouse,
+    mostrar_tela,
+    alternar_tela_cheia,
+    RankingCortina
+)
 
 pygame.init()
-
-ranking = carregar_ranking()
-
-# CONFIG
 
 LARGURA = 800
 ALTURA = 500
@@ -35,15 +38,26 @@ BOTAO_JOGAR = pygame.Rect(250, 270, 300, 50)
 BOTAO_RANKING = pygame.Rect(250, 335, 300, 50)
 BOTAO_SAIR = pygame.Rect(250, 400, 300, 50)
 
-BOTAO_VOLTAR = pygame.Rect(250, 360, 300, 40)
+BOTAO_JOGAR_NOVAMENTE = pygame.Rect(
+    200,
+    270,
+    400,
+    50
+)
 
-BOTAO_JOGAR_NOVAMENTE = pygame.Rect(200, 270, 400, 50)
-BOTAO_MENU_GAME_OVER = pygame.Rect(200, 330, 400, 50)
+BOTAO_MENU_GAME_OVER = pygame.Rect(
+    200,
+    330,
+    400,
+    50
+)
 
 tela_cheia = False
 
+ranking = carregar_ranking()
 
-# IMAGENS
+ranking_cortina = RankingCortina()
+
 
 try:
 
@@ -98,33 +112,58 @@ try:
 
 except:
 
-    fundo_menu = pygame.Surface((800, 500))
-    fundo_menu.fill((20, 20, 35))
+    fundo_menu = pygame.Surface(
+        (800, 500)
+    )
 
-    game_over_img = pygame.Surface((800, 500))
-    game_over_img.fill((20, 20, 35))
+    fundo_menu.fill(
+        (20, 20, 35)
+    )
 
-    player_img = pygame.Surface((60, 60))
-    player_img.fill((255, 0, 0))
+    game_over_img = pygame.Surface(
+        (800, 500)
+    )
 
-    obstaculo_img = pygame.Surface((50, 50))
-    obstaculo_img.fill((0, 0, 0))
+    game_over_img.fill(
+        (20, 20, 35)
+    )
 
-    fundo_img = pygame.Surface((800, 500))
-    fundo_img.fill((150, 150, 150))
+    player_img = pygame.Surface(
+        (60, 60)
+    )
 
-    bloco_img = pygame.Surface((60, 20))
-    bloco_img.fill((255, 255, 255))
+    player_img.fill(
+        (255, 0, 0)
+    )
 
+    obstaculo_img = pygame.Surface(
+        (50, 50)
+    )
 
-# ESTADOS
+    obstaculo_img.fill(
+        (0, 0, 0)
+    )
+
+    fundo_img = pygame.Surface(
+        (800, 500)
+    )
+
+    fundo_img.fill(
+        (150, 150, 150)
+    )
+
+    bloco_img = pygame.Surface(
+        (60, 20)
+    )
+
+    bloco_img.fill(
+        (255, 255, 255)
+    )
+
 
 estado = "menu"
 nome_jogador = ""
-estado_prev = None
 
-
-# RESET
 
 def resetar_jogo():
 
@@ -147,62 +186,6 @@ def resetar_jogo():
 
 jogo = resetar_jogo()
 
-
-# MOUSE
-
-def converter_mouse(pos):
-
-    largura_janela, altura_janela = janela.get_size()
-
-    escala_x = largura_janela / LARGURA
-    escala_y = altura_janela / ALTURA
-
-    escala = min(escala_x, escala_y)
-
-    nova_largura = int(LARGURA * escala)
-    nova_altura = int(ALTURA * escala)
-
-    offset_x = (largura_janela - nova_largura) // 2
-    offset_y = (altura_janela - nova_altura) // 2
-
-    mouse_x = (pos[0] - offset_x) / escala
-    mouse_y = (pos[1] - offset_y) / escala
-
-    return mouse_x, mouse_y
-
-
-# REDIMENSIONAMENTO
-
-def mostrar_tela():
-
-    largura_janela, altura_janela = janela.get_size()
-
-    escala_x = largura_janela / LARGURA
-    escala_y = altura_janela / ALTURA
-
-    escala = min(escala_x, escala_y)
-
-    nova_largura = int(LARGURA * escala)
-    nova_altura = int(ALTURA * escala)
-
-    tela_redimensionada = pygame.transform.scale(
-        tela,
-        (nova_largura, nova_altura)
-    )
-
-    janela.fill(PRETO)
-
-    pos_x = (largura_janela - nova_largura) // 2
-    pos_y = (altura_janela - nova_altura) // 2
-
-    janela.blit(
-        tela_redimensionada,
-        (pos_x, pos_y)
-    )
-
-
-# LOOP PRINCIPAL
-
 rodando = True
 
 while rodando:
@@ -211,14 +194,10 @@ while rodando:
 
     for evento in pygame.event.get():
 
-        # SAIR
-
         if evento.type == pygame.QUIT:
 
             rodando = False
 
-
-        # REDIMENSIONAR
 
         if evento.type == pygame.VIDEORESIZE:
 
@@ -230,32 +209,17 @@ while rodando:
                 )
 
 
-        # TECLADO
-
         if evento.type == pygame.KEYDOWN:
-
-            # F11
 
             if evento.key == pygame.K_F11:
 
-                tela_cheia = not tela_cheia
+                janela, tela_cheia = alternar_tela_cheia(
+                    janela,
+                    tela_cheia,
+                    LARGURA,
+                    ALTURA
+                )
 
-                if tela_cheia:
-
-                    janela = pygame.display.set_mode(
-                        (0, 0),
-                        pygame.FULLSCREEN
-                    )
-
-                else:
-
-                    janela = pygame.display.set_mode(
-                        (LARGURA, ALTURA),
-                        pygame.RESIZABLE
-                    )
-
-
-            # MENU
 
             if estado == "menu":
 
@@ -278,7 +242,12 @@ while rodando:
                         nome_jogador += evento.unicode
 
 
-            # GAME OVER
+            elif estado == "ranking":
+
+                if evento.key == pygame.K_ESCAPE:
+
+                    estado = "menu"
+
 
             elif estado == "game_over":
 
@@ -293,17 +262,18 @@ while rodando:
                     nome_jogador = ""
 
 
-        # MOUSE
-
         if (
             evento.type == pygame.MOUSEBUTTONDOWN
             and evento.button == 1
         ):
 
-            mouse_pos = converter_mouse(evento.pos)
+            mouse_pos = converter_mouse(
+                evento.pos,
+                janela,
+                LARGURA,
+                ALTURA
+            )
 
-
-            # BOTÃO JOGAR
 
             if (
                 estado == "menu"
@@ -316,19 +286,17 @@ while rodando:
                     estado = "jogo"
 
 
-            # BOTÃO RANKING
-
             elif (
                 estado == "menu"
                 and BOTAO_RANKING.collidepoint(mouse_pos)
             ):
 
-                estado_prev = estado
                 ranking = carregar_ranking()
+
+                ranking_cortina.iniciar()
+
                 estado = "ranking"
 
-
-            # BOTÃO SAIR
 
             elif (
                 estado == "menu"
@@ -338,33 +306,38 @@ while rodando:
                 rodando = False
 
 
-            # BOTÃO VOLTAR
+            elif estado == "ranking":
 
-            elif (
-                estado == "ranking"
-                and BOTAO_VOLTAR.collidepoint(mouse_pos)
-            ):
+               resultado = ranking_cortina.clicar(
+                   mouse_pos
+               )
 
-                estado = estado_prev or "menu"
-                estado_prev = None
+               if resultado == "menu":
 
+                  estado = "menu"
+                  nome_jogador = ""
 
-            # BOTÃO JOGAR NOVAMENTE
+               elif resultado == "ranking":
+
+                    estado = "ranking"
+
 
             elif (
                 estado == "game_over"
-                and BOTAO_JOGAR_NOVAMENTE.collidepoint(mouse_pos)
+                and BOTAO_JOGAR_NOVAMENTE.collidepoint(
+                    mouse_pos
+                )
             ):
 
                 jogo = resetar_jogo()
                 estado = "jogo"
 
 
-            # BOTÃO MENU GAME OVER
-
             elif (
                 estado == "game_over"
-                and BOTAO_MENU_GAME_OVER.collidepoint(mouse_pos)
+                and BOTAO_MENU_GAME_OVER.collidepoint(
+                    mouse_pos
+                )
             ):
 
                 estado = "menu"
@@ -374,11 +347,12 @@ while rodando:
     tela.fill(BRANCO)
 
     mouse_pos = converter_mouse(
-        pygame.mouse.get_pos()
+        pygame.mouse.get_pos(),
+        janela,
+        LARGURA,
+        ALTURA
     )
 
-
-    # MENU
 
     if estado == "menu":
 
@@ -386,9 +360,6 @@ while rodando:
             fundo_menu,
             (0, 0)
         )
-
-
-        # TITULO
 
         titulo = fonte_grande.render(
             "JUMP HOMEM-ARANHA",
@@ -399,9 +370,6 @@ while rodando:
         titulo_rect = titulo.get_rect(
             center=(400, 70)
         )
-
-
-        # BORDA AZUL
 
         borda = fonte_grande.render(
             "JUMP HOMEM-ARANHA",
@@ -430,25 +398,19 @@ while rodando:
         )
 
 
-        # NOME
-
         texto_nome = fonte.render(
             "DIGITE SEU NOME",
             True,
             (30, 70, 200)
         )
 
-        texto_nome_rect = texto_nome.get_rect(
-            center=(400, 170)
-        )
-
         tela.blit(
             texto_nome,
-            texto_nome_rect
+            texto_nome.get_rect(
+                center=(400, 170)
+            )
         )
 
-
-        # CAIXA DO NOME
 
         caixa_nome = pygame.Rect(
             200,
@@ -465,30 +427,26 @@ while rodando:
         )
 
         texto_digitado = fonte.render(
-            nome_jogador if nome_jogador else "Digite aqui...",
+            nome_jogador
+            if nome_jogador
+            else "Digite aqui...",
             True,
             PRETO
         )
 
-        texto_digitado_rect = texto_digitado.get_rect(
-            center=caixa_nome.center
-        )
-
         tela.blit(
             texto_digitado,
-            texto_digitado_rect
+            texto_digitado.get_rect(
+                center=caixa_nome.center
+            )
         )
 
 
-        # BOTÃO JOGAR
-
-        if BOTAO_JOGAR.collidepoint(mouse_pos):
-
-            cor_jogar = (50, 180, 70)
-
-        else:
-
-            cor_jogar = BRANCO
+        cor_jogar = (
+            (50, 180, 70)
+            if BOTAO_JOGAR.collidepoint(mouse_pos)
+            else BRANCO
+        )
 
         pygame.draw.rect(
             tela,
@@ -503,25 +461,19 @@ while rodando:
             PRETO
         )
 
-        texto_jogar_rect = texto_jogar.get_rect(
-            center=BOTAO_JOGAR.center
-        )
-
         tela.blit(
             texto_jogar,
-            texto_jogar_rect
+            texto_jogar.get_rect(
+                center=BOTAO_JOGAR.center
+            )
         )
 
 
-        # BOTÃO RANKING
-
-        if BOTAO_RANKING.collidepoint(mouse_pos):
-
-            cor_ranking = (50, 180, 70)
-
-        else:
-
-            cor_ranking = BRANCO
+        cor_ranking = (
+            (50, 180, 70)
+            if BOTAO_RANKING.collidepoint(mouse_pos)
+            else BRANCO
+        )
 
         pygame.draw.rect(
             tela,
@@ -536,25 +488,19 @@ while rodando:
             PRETO
         )
 
-        texto_ranking_rect = texto_ranking.get_rect(
-            center=BOTAO_RANKING.center
-        )
-
         tela.blit(
             texto_ranking,
-            texto_ranking_rect
+            texto_ranking.get_rect(
+                center=BOTAO_RANKING.center
+            )
         )
 
 
-        # BOTÃO SAIR
-
-        if BOTAO_SAIR.collidepoint(mouse_pos):
-
-            cor_sair = (50, 180, 70)
-
-        else:
-
-            cor_sair = BRANCO
+        cor_sair = (
+            (50, 180, 70)
+            if BOTAO_SAIR.collidepoint(mouse_pos)
+            else BRANCO
+        )
 
         pygame.draw.rect(
             tela,
@@ -569,73 +515,23 @@ while rodando:
             PRETO
         )
 
-        texto_sair_rect = texto_sair.get_rect(
-            center=BOTAO_SAIR.center
-        )
-
         tela.blit(
             texto_sair,
-            texto_sair_rect
+            texto_sair.get_rect(
+                center=BOTAO_SAIR.center
+            )
         )
 
-
-    # RANKING
 
     elif estado == "ranking":
 
-        tela.fill(BRANCO)
+         ranking_cortina.atualizar()
 
-        titulo = fonte_grande.render(
-            "RANKING",
-            True,
-            PRETO
+         ranking_cortina.desenhar(
+             tela,
+             ranking
         )
 
-        tela.blit(
-            titulo,
-            (300, 50)
-        )
-
-        y = 140
-
-        for i, (nome, pontos) in enumerate(ranking):
-
-            texto = fonte.render(
-                f"{i + 1}. {nome} - {pontos}",
-                True,
-                PRETO
-            )
-
-            tela.blit(
-                texto,
-                (250, y)
-            )
-
-            y += 30
-
-        pygame.draw.rect(
-            tela,
-            PRETO,
-            BOTAO_VOLTAR,
-            2
-        )
-
-        instr = fonte.render(
-            "Voltar",
-            True,
-            PRETO
-        )
-
-        tela.blit(
-            instr,
-            (
-                BOTAO_VOLTAR.x + 115,
-                BOTAO_VOLTAR.y + 7
-            )
-        )
-
-
-    # JOGO
 
     elif estado == "jogo":
 
@@ -659,8 +555,6 @@ while rodando:
 
         teclas = pygame.key.get_pressed()
 
-
-        # PULO
 
         if (
             teclas[pygame.K_SPACE]
@@ -686,16 +580,12 @@ while rodando:
         jogo["no_chao"] = False
 
 
-        # CHÃO
-
         if jogo["player_y"] >= 395:
 
             jogo["player_y"] = 395
             jogo["vel_y"] = 0
             jogo["no_chao"] = True
 
-
-        # GERAR OBSTÁCULOS
 
         if (
             len(jogo["obstaculos"]) == 0
@@ -707,8 +597,6 @@ while rodando:
             )
 
 
-        # GERAR BLOCOS
-
         if len(jogo["blocos"]) == 0:
 
             if (
@@ -718,7 +606,10 @@ while rodando:
 
                 if random.randint(0, 100) < 25:
 
-                    quantidade = random.randint(3, 5)
+                    quantidade = random.randint(
+                        3,
+                        5
+                    )
 
                     for i in range(quantidade):
 
@@ -730,14 +621,15 @@ while rodando:
                         )
 
 
-        # GERAR MOEDAS
-
         if (
             len(jogo["moedas"]) == 0
             or jogo["moedas"][-1][0] < 550
         ):
 
-            quantidade_moedas = random.randint(2, 3)
+            quantidade_moedas = random.randint(
+                2,
+                3
+            )
 
             alturas = [
                 280,
@@ -757,7 +649,9 @@ while rodando:
                     and not moeda_criada
                 ):
 
-                    y = random.choice(alturas)
+                    y = random.choice(
+                        alturas
+                    )
 
                     moeda_rect = pygame.Rect(
                         x,
@@ -768,8 +662,6 @@ while rodando:
 
                     pode_criar = True
 
-
-                    # VERIFICAR DINOSSAUROS
 
                     for obs in jogo["obstaculos"]:
 
@@ -787,8 +679,6 @@ while rodando:
                             pode_criar = False
                             break
 
-
-                    # VERIFICAR BLOCOS
 
                     if pode_criar:
 
@@ -809,8 +699,6 @@ while rodando:
                                 break
 
 
-                    # CRIAR MOEDA
-
                     if pode_criar:
 
                         jogo["moedas"].append(
@@ -822,15 +710,11 @@ while rodando:
                     tentativas += 1
 
 
-        # VELOCIDADE
-
         velocidade = (
             jogo["velocidade_base"]
             + (jogo["pontos"] / 1000) * 0.5
         )
 
-
-        # MOVIMENTO
 
         for obs in jogo["obstaculos"]:
 
@@ -844,8 +728,6 @@ while rodando:
 
             moeda[0] -= velocidade
 
-
-        # REMOVER OBJETOS FORA DA TELA
 
         jogo["obstaculos"] = [
             o
@@ -866,8 +748,6 @@ while rodando:
         ]
 
 
-        # COLISÃO DO JOGADOR
-
         player_rect = pygame.Rect(
             jogo["player_x"],
             jogo["player_y"],
@@ -875,8 +755,6 @@ while rodando:
             60
         )
 
-
-        # COLETAR MOEDAS
 
         for moeda in jogo["moedas"]:
 
@@ -894,12 +772,12 @@ while rodando:
                 jogo["moedas_coletadas"] += 1
                 jogo["pontos"] += 25
 
-                jogo["moedas"].remove(moeda)
+                jogo["moedas"].remove(
+                    moeda
+                )
 
                 break
 
-
-        # COLISÃO COM OBSTÁCULOS
 
         for obs in jogo["obstaculos"]:
 
@@ -920,6 +798,7 @@ while rodando:
                 )
 
                 ranking = carregar_ranking()
+
                 estado = "game_over"
 
                 break
@@ -929,8 +808,6 @@ while rodando:
 
             continue
 
-
-        # COLISÃO COM BLOCOS
 
         for bloco in jogo["blocos"]:
 
@@ -959,12 +836,8 @@ while rodando:
                     jogo["no_chao"] = True
 
 
-        # PONTOS
-
         jogo["pontos"] += 1
 
-
-        # DESENHAR JOGADOR
 
         tela.blit(
             player_img,
@@ -974,8 +847,6 @@ while rodando:
             )
         )
 
-
-        # DESENHAR OBSTÁCULOS
 
         for obs in jogo["obstaculos"]:
 
@@ -988,8 +859,6 @@ while rodando:
             )
 
 
-        # DESENHAR BLOCOS
-
         for bloco in jogo["blocos"]:
 
             tela.blit(
@@ -1000,8 +869,6 @@ while rodando:
                 )
             )
 
-
-        # DESENHAR MOEDAS
 
         for moeda in jogo["moedas"]:
 
@@ -1031,10 +898,9 @@ while rodando:
             )
 
 
-        # PONTOS E MOEDAS
-
         texto = fonte.render(
-            f"Pontos: {jogo['pontos']}   Moedas: {jogo['moedas_coletadas']}",
+            f"Pontos: {jogo['pontos']}   "
+            f"Moedas: {jogo['moedas_coletadas']}",
             True,
             BRANCO
         )
@@ -1045,19 +911,13 @@ while rodando:
         )
 
 
-    # GAME OVER
-
     elif estado == "game_over":
-
-        # FUNDO
 
         tela.blit(
             game_over_img,
             (0, 0)
         )
 
-
-        # TITULO GAME OVER
 
         titulo = fonte_grande.render(
             "GAME OVER",
@@ -1068,9 +928,6 @@ while rodando:
         titulo_rect = titulo.get_rect(
             center=(400, 65)
         )
-
-
-        # BORDA AZUL DO TITULO
 
         borda = fonte_grande.render(
             "GAME OVER",
@@ -1099,25 +956,19 @@ while rodando:
         )
 
 
-        # NOME
-
         nome = fonte.render(
             f"Jogador: {nome_jogador}",
             True,
             BRANCO
         )
 
-        nome_rect = nome.get_rect(
-            center=(400, 130)
-        )
-
         tela.blit(
             nome,
-            nome_rect
+            nome.get_rect(
+                center=(400, 130)
+            )
         )
 
-
-        # PONTOS
 
         pontos = fonte.render(
             f"Pontos: {jogo['pontos']}",
@@ -1125,43 +976,36 @@ while rodando:
             BRANCO
         )
 
-        pontos_rect = pontos.get_rect(
-            center=(400, 165)
-        )
-
         tela.blit(
             pontos,
-            pontos_rect
+            pontos.get_rect(
+                center=(400, 165)
+            )
         )
 
 
-        # MOEDAS
-
         moedas = fonte.render(
-            f"Moedas coletadas: {jogo['moedas_coletadas']}",
+            f"Moedas coletadas: "
+            f"{jogo['moedas_coletadas']}",
             True,
             BRANCO
         )
 
-        moedas_rect = moedas.get_rect(
-            center=(400, 200)
-        )
-
         tela.blit(
             moedas,
-            moedas_rect
+            moedas.get_rect(
+                center=(400, 200)
+            )
         )
 
 
-        # BOTÃO JOGAR NOVAMENTE
-
-        if BOTAO_JOGAR_NOVAMENTE.collidepoint(mouse_pos):
-
-            cor_jogar = (50, 180, 70)
-
-        else:
-
-            cor_jogar = BRANCO
+        cor_jogar = (
+            (50, 180, 70)
+            if BOTAO_JOGAR_NOVAMENTE.collidepoint(
+                mouse_pos
+            )
+            else BRANCO
+        )
 
         pygame.draw.rect(
             tela,
@@ -1176,25 +1020,21 @@ while rodando:
             PRETO
         )
 
-        texto_jogar_rect = texto_jogar.get_rect(
-            center=BOTAO_JOGAR_NOVAMENTE.center
-        )
-
         tela.blit(
             texto_jogar,
-            texto_jogar_rect
+            texto_jogar.get_rect(
+                center=BOTAO_JOGAR_NOVAMENTE.center
+            )
         )
 
 
-        # BOTÃO VOLTAR AO MENU
-
-        if BOTAO_MENU_GAME_OVER.collidepoint(mouse_pos):
-
-            cor_menu = (50, 180, 70)
-
-        else:
-
-            cor_menu = BRANCO
+        cor_menu = (
+            (50, 180, 70)
+            if BOTAO_MENU_GAME_OVER.collidepoint(
+                mouse_pos
+            )
+            else BRANCO
+        )
 
         pygame.draw.rect(
             tela,
@@ -1209,17 +1049,21 @@ while rodando:
             PRETO
         )
 
-        texto_menu_rect = texto_menu.get_rect(
-            center=BOTAO_MENU_GAME_OVER.center
-        )
-
         tela.blit(
             texto_menu,
-            texto_menu_rect
+            texto_menu.get_rect(
+                center=BOTAO_MENU_GAME_OVER.center
+            )
         )
 
 
-    mostrar_tela()
+    mostrar_tela(
+        tela,
+        janela,
+        LARGURA,
+        ALTURA,
+        PRETO
+    )
 
     pygame.display.flip()
 
