@@ -1,6 +1,7 @@
 import pygame
+import random
 
-from jogo import Jogo
+from player import Player
 from ranking import carregar_ranking, salvar_ranking
 
 from cortina import (
@@ -28,30 +29,14 @@ clock = pygame.time.Clock()
 
 PRETO = (0, 0, 0)
 BRANCO = (255, 255, 255)
+AMARELO = (255, 215, 0)
 
 fonte = pygame.font.SysFont(None, 36)
 fonte_grande = pygame.font.SysFont(None, 60)
 
-BOTAO_JOGAR = pygame.Rect(
-    250,
-    270,
-    300,
-    50
-)
-
-BOTAO_RANKING = pygame.Rect(
-    250,
-    335,
-    300,
-    50
-)
-
-BOTAO_SAIR = pygame.Rect(
-    250,
-    400,
-    300,
-    50
-)
+BOTAO_JOGAR = pygame.Rect(250, 270, 300, 50)
+BOTAO_RANKING = pygame.Rect(250, 335, 300, 50)
+BOTAO_SAIR = pygame.Rect(250, 400, 300, 50)
 
 BOTAO_JOGAR_NOVAMENTE = pygame.Rect(
     200,
@@ -180,12 +165,26 @@ estado = "menu"
 nome_jogador = ""
 
 
-jogo = Jogo(
-    player_img,
-    obstaculo_img,
-    bloco_img
-)
+def resetar_jogo():
 
+    return {
+        "player_x": 100,
+        "player_y": 395,
+        "vel_y": 0,
+        "gravidade": 0.7,
+        "no_chao": True,
+        "tempo_pulo": 0,
+        "obstaculos": [],
+        "blocos": [],
+        "moedas": [],
+        "moedas_coletadas": 0,
+        "pontos": 0,
+        "fundo_x": 0,
+        "velocidade_base": 6
+    }
+
+
+jogo = resetar_jogo()
 
 rodando = True
 
@@ -229,8 +228,7 @@ while rodando:
                     and nome_jogador.strip() != ""
                 ):
 
-                    jogo.reiniciar()
-
+                    jogo = resetar_jogo()
                     estado = "jogo"
 
                 elif evento.key == pygame.K_BACKSPACE:
@@ -255,8 +253,7 @@ while rodando:
 
                 if evento.key == pygame.K_RETURN:
 
-                    jogo.reiniciar()
-
+                    jogo = resetar_jogo()
                     estado = "jogo"
 
                 elif evento.key == pygame.K_ESCAPE:
@@ -285,8 +282,7 @@ while rodando:
 
                 if nome_jogador.strip() != "":
 
-                    jogo.reiniciar()
-
+                    jogo = resetar_jogo()
                     estado = "jogo"
 
 
@@ -312,16 +308,16 @@ while rodando:
 
             elif estado == "ranking":
 
-                resultado = ranking_cortina.clicar(
-                    mouse_pos
-                )
+               resultado = ranking_cortina.clicar(
+                   mouse_pos
+               )
 
-                if resultado == "menu":
+               if resultado == "menu":
 
-                    estado = "menu"
-                    nome_jogador = ""
+                  estado = "menu"
+                  nome_jogador = ""
 
-                elif resultado == "ranking":
+               elif resultado == "ranking":
 
                     estado = "ranking"
 
@@ -333,8 +329,7 @@ while rodando:
                 )
             ):
 
-                jogo.reiniciar()
-
+                jogo = resetar_jogo()
                 estado = "jogo"
 
 
@@ -530,40 +525,390 @@ while rodando:
 
     elif estado == "ranking":
 
-        ranking_cortina.atualizar()
+         ranking_cortina.atualizar()
 
-        ranking_cortina.desenhar(
-            tela,
-            ranking
+         ranking_cortina.desenhar(
+             tela,
+             ranking
         )
 
 
     elif estado == "jogo":
 
-        teclas = pygame.key.get_pressed()
+        player_y_anterior = jogo["player_y"]
 
-        jogo.atualizar(
-            teclas
+        jogo["fundo_x"] -= 2
+
+        if jogo["fundo_x"] <= -800:
+
+            jogo["fundo_x"] = 0
+
+        tela.blit(
+            fundo_img,
+            (jogo["fundo_x"], 0)
         )
 
-        if jogo.game_over:
+        tela.blit(
+            fundo_img,
+            (jogo["fundo_x"] + 800, 0)
+        )
 
-            salvar_ranking(
-                nome_jogador,
-                jogo.pontos
+        teclas = pygame.key.get_pressed()
+
+
+        if (
+            teclas[pygame.K_SPACE]
+            and jogo["no_chao"]
+        ):
+
+            jogo["vel_y"] = -15
+            jogo["no_chao"] = False
+            jogo["tempo_pulo"] = 0
+
+        if (
+            teclas[pygame.K_SPACE]
+            and not jogo["no_chao"]
+        ):
+
+            if jogo["tempo_pulo"] < 10:
+
+                jogo["vel_y"] -= 0.5
+                jogo["tempo_pulo"] += 1
+
+        jogo["vel_y"] += jogo["gravidade"]
+        jogo["player_y"] += jogo["vel_y"]
+        jogo["no_chao"] = False
+
+
+        if jogo["player_y"] >= 395:
+
+            jogo["player_y"] = 395
+            jogo["vel_y"] = 0
+            jogo["no_chao"] = True
+
+
+        if (
+            len(jogo["obstaculos"]) == 0
+            or jogo["obstaculos"][-1][0] < 450
+        ):
+
+            jogo["obstaculos"].append(
+                [800, 405]
             )
 
-            ranking = carregar_ranking()
 
-            estado = "game_over"
+        if len(jogo["blocos"]) == 0:
 
-        else:
+            if (
+                len(jogo["obstaculos"]) > 0
+                and jogo["obstaculos"][-1][0] < 500
+            ):
 
-            jogo.desenhar(
+                if random.randint(0, 100) < 25:
+
+                    quantidade = random.randint(
+                        3,
+                        5
+                    )
+
+                    for i in range(quantidade):
+
+                        x = 800 + (i * 65)
+                        y = 395 - (i * 30)
+
+                        jogo["blocos"].append(
+                            [x, y]
+                        )
+
+
+        if (
+            len(jogo["moedas"]) == 0
+            or jogo["moedas"][-1][0] < 550
+        ):
+
+            quantidade_moedas = random.randint(
+                2,
+                3
+            )
+
+            alturas = [
+                280,
+                230,
+                180
+            ]
+
+            for i in range(quantidade_moedas):
+
+                x = 850 + (i * 60)
+
+                tentativas = 0
+                moeda_criada = False
+
+                while (
+                    tentativas < 20
+                    and not moeda_criada
+                ):
+
+                    y = random.choice(
+                        alturas
+                    )
+
+                    moeda_rect = pygame.Rect(
+                        x,
+                        y,
+                        30,
+                        30
+                    )
+
+                    pode_criar = True
+
+
+                    for obs in jogo["obstaculos"]:
+
+                        obstaculo_rect = pygame.Rect(
+                            obs[0] - 100,
+                            obs[1] - 50,
+                            150,
+                            100
+                        )
+
+                        if moeda_rect.colliderect(
+                            obstaculo_rect
+                        ):
+
+                            pode_criar = False
+                            break
+
+
+                    if pode_criar:
+
+                        for bloco in jogo["blocos"]:
+
+                            bloco_rect = pygame.Rect(
+                                bloco[0] - 20,
+                                bloco[1] - 20,
+                                100,
+                                60
+                            )
+
+                            if moeda_rect.colliderect(
+                                bloco_rect
+                            ):
+
+                                pode_criar = False
+                                break
+
+
+                    if pode_criar:
+
+                        jogo["moedas"].append(
+                            [x, y]
+                        )
+
+                        moeda_criada = True
+
+                    tentativas += 1
+
+
+        velocidade = (
+            jogo["velocidade_base"]
+            + (jogo["pontos"] / 1000) * 0.5
+        )
+
+
+        for obs in jogo["obstaculos"]:
+
+            obs[0] -= velocidade
+
+        for bloco in jogo["blocos"]:
+
+            bloco[0] -= velocidade
+
+        for moeda in jogo["moedas"]:
+
+            moeda[0] -= velocidade
+
+
+        jogo["obstaculos"] = [
+            o
+            for o in jogo["obstaculos"]
+            if o[0] > -50
+        ]
+
+        jogo["blocos"] = [
+            b
+            for b in jogo["blocos"]
+            if b[0] > -60
+        ]
+
+        jogo["moedas"] = [
+            m
+            for m in jogo["moedas"]
+            if m[0] > -30
+        ]
+
+
+        player_rect = pygame.Rect(
+            jogo["player_x"],
+            jogo["player_y"],
+            60,
+            60
+        )
+
+
+        for moeda in jogo["moedas"]:
+
+            moeda_rect = pygame.Rect(
+                moeda[0],
+                moeda[1],
+                30,
+                30
+            )
+
+            if player_rect.colliderect(
+                moeda_rect
+            ):
+
+                jogo["moedas_coletadas"] += 1
+                jogo["pontos"] += 25
+
+                jogo["moedas"].remove(
+                    moeda
+                )
+
+                break
+
+
+        for obs in jogo["obstaculos"]:
+
+            obstaculo_rect = pygame.Rect(
+                obs[0],
+                obs[1],
+                50,
+                50
+            )
+
+            if player_rect.colliderect(
+                obstaculo_rect
+            ):
+
+                salvar_ranking(
+                    nome_jogador,
+                    jogo["pontos"]
+                )
+
+                ranking = carregar_ranking()
+
+                estado = "game_over"
+
+                break
+
+
+        if estado == "game_over":
+
+            continue
+
+
+        for bloco in jogo["blocos"]:
+
+            bloco_rect = pygame.Rect(
+                bloco[0],
+                bloco[1],
+                60,
+                20
+            )
+
+            if player_rect.colliderect(
+                bloco_rect
+            ):
+
+                if (
+                    jogo["vel_y"] > 0
+                    and player_y_anterior + 60
+                    <= bloco_rect.top + 15
+                ):
+
+                    jogo["player_y"] = (
+                        bloco_rect.top - 60
+                    )
+
+                    jogo["vel_y"] = 0
+                    jogo["no_chao"] = True
+
+
+        jogo["pontos"] += 1
+
+
+        tela.blit(
+            player_img,
+            (
+                jogo["player_x"],
+                jogo["player_y"]
+            )
+        )
+
+
+        for obs in jogo["obstaculos"]:
+
+            tela.blit(
+                obstaculo_img,
+                (
+                    obs[0],
+                    obs[1]
+                )
+            )
+
+
+        for bloco in jogo["blocos"]:
+
+            tela.blit(
+                bloco_img,
+                (
+                    bloco[0],
+                    bloco[1]
+                )
+            )
+
+
+        for moeda in jogo["moedas"]:
+
+            centro_x = int(
+                moeda[0] + 15
+            )
+
+            centro_y = int(
+                moeda[1] + 15
+            )
+
+            pygame.draw.circle(
                 tela,
-                fundo_img,
-                fonte
+                AMARELO,
+                (centro_x, centro_y),
+                15
             )
+
+            pygame.draw.circle(
+                tela,
+                BRANCO,
+                (
+                    centro_x - 5,
+                    centro_y - 5
+                ),
+                4
+            )
+
+
+        texto = fonte.render(
+            f"Pontos: {jogo['pontos']}   "
+            f"Moedas: {jogo['moedas_coletadas']}",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            texto,
+            (10, 10)
+        )
 
 
     elif estado == "game_over":
@@ -626,7 +971,7 @@ while rodando:
 
 
         pontos = fonte.render(
-            f"Pontos: {jogo.pontos}",
+            f"Pontos: {jogo['pontos']}",
             True,
             BRANCO
         )
@@ -641,7 +986,7 @@ while rodando:
 
         moedas = fonte.render(
             f"Moedas coletadas: "
-            f"{jogo.moedas_coletadas}",
+            f"{jogo['moedas_coletadas']}",
             True,
             BRANCO
         )

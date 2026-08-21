@@ -8,7 +8,7 @@ class Player:
         self.imagem = imagem
 
         self.x = 100
-        self.y = 300
+        self.y = 395
 
         self.vel_y = 0
 
@@ -40,16 +40,24 @@ class Player:
 
         self.no_chao = False
 
-        if self.y >= 380:
+        if self.y >= 395:
 
-            self.y = 380
+            self.y = 395
             self.vel_y = 0
             self.no_chao = True
 
     def desenhar(self, tela):
 
-        tela.blit(self.imagem, (self.x, self.y))
+        tela.blit(
+            self.imagem,
+            (self.x, self.y)
+        )
 
     def rect(self):
 
-        return pygame.Rect(self.x, self.y, 60, 60)
+        return pygame.Rect(
+            self.x,
+            self.y,
+            60,
+            60
+        )
