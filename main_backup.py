@@ -169,7 +169,7 @@ def resetar_jogo():
 
     return {
         "player_x": 100,
-        "player_y": 395,
+        "player_y": 320,
         "vel_y": 0,
         "gravidade": 0.7,
         "no_chao": True,
