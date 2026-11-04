@@ -472,23 +472,26 @@ while rodando:
         player_y_anterior = jogo["player_y"]
 
         # Movimento do fundo
-        jogo["fundo_x"] -= 2
-
-        if jogo["fundo_x"] <= -800:
-            jogo["fundo_x"] = 0
-
-        tela.blit(
-            fundo_img,
-            (jogo["fundo_x"], 0)
-        )
-
-        tela.blit(
-            fundo_img,
-            (jogo["fundo_x"] + 800, 0)
-        )
+        # Fundo parado
+        jogo["fundo_x"] = 0
+        tela.blit(fundo_img, (0, 0))
 
         # Pulo
         teclas = pygame.key.get_pressed()
+
+        # Movimento horizontal do personagem
+        if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
+           jogo["player_x"] -= 5
+
+        if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
+           jogo["player_x"] += 5
+ 
+        # Impede o personagem de sair pelas laterais
+        if jogo["player_x"] < 0:
+           jogo["player_x"] = 0
+ 
+        if jogo["player_x"] > LARGURA - 60:
+           jogo["player_x"] = LARGURA - 60
 
         if teclas[pygame.K_SPACE] and jogo["no_chao"]:
             jogo["vel_y"] = -15
