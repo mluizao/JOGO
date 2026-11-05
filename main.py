@@ -75,7 +75,7 @@ try:
     player_img = pygame.transform.scale(
         player_img, (60, 60)
     )
-
+    
     obstaculo_img = pygame.image.load(
         "assets/imagens/obstaculo.png"
     ).convert_alpha()
@@ -110,13 +110,53 @@ try:
         fundo_img, (800, 500)
     )
 
-    bloco_img = pygame.image.load(
-        "assets/imagens/bloco.png"
+    # Carregar imagem com todos os prédios
+    predios_folha = pygame.image.load(
+        "assets/imagens/predios_transparentes.png"
     ).convert_alpha()
 
-    bloco_img = pygame.transform.scale(
-        bloco_img, (60, 20)
+    # Recortes dos prédios na imagem original
+    caixas_predios = [
+        (955, 17, 1235, 395),
+        (1277, 84, 1551, 395),
+        (296, 127, 581, 395),
+        (634, 157, 871, 394),
+        (8, 236, 259, 394),
+        (654, 410, 1049, 713),
+        (1135, 425, 1527, 733),
+        (29, 528, 556, 713),
+        (298, 774, 559, 965),
+        (978, 784, 1548, 965),
+        (39, 820, 201, 965)
+    ]
+
+    predios_imagens = []
+ 
+    for caixa in caixas_predios:
+
+        x1, y1, x2, y2 = caixa
+
+        imagem = predios_folha.subsurface(
+            (x1, y1, x2 - x1, y2 - y1)
+        ).copy()
+
+    # Redimensiona sem deformar
+    escala = min(
+        360 / imagem.get_width(),
+        220 / imagem.get_height()
     )
+
+    novo_tamanho = (
+        int(imagem.get_width() * escala),
+        int(imagem.get_height() * escala)
+    )
+
+    imagem = pygame.transform.smoothscale(
+        imagem,
+        novo_tamanho
+    )
+
+    predios_imagens.append(imagem)
 
 except Exception as erro:
     print("Erro ao carregar uma imagem:", erro)
@@ -139,13 +179,15 @@ except Exception as erro:
     bloco_img = pygame.Surface((60, 20))
     bloco_img.fill((255, 255, 255))
 
+    predios_imagens = []
+
 
 def resetar_jogo():
     return {
         "player_x": 100,
 
         # Personagem começa apoiado no chão
-        "player_y": CHAO_Y - 60,
+        "player_y": 330,
 
         "vel_y": 0,
         "gravidade": 0.7,
@@ -160,7 +202,7 @@ def resetar_jogo():
         "pontos": 0,
 
         "fundo_x": 0,
-        "velocidade_base": 6
+        "velocidade_base": 2.5
     }
 
 
@@ -472,24 +514,30 @@ while rodando:
         player_y_anterior = jogo["player_y"]
 
         # Movimento do fundo
-        # Fundo parado
-        jogo["fundo_x"] = 0
-        tela.blit(fundo_img, (0, 0))
+        jogo["fundo_x"] -= 0
+        tela.blit(
+            fundo_img,
+            (jogo["fundo_x"], 0)
+        )
+
+        tela.blit(
+            fundo_img,
+            (jogo["fundo_x"] + 800, 0)
+        )
 
         # Pulo
         teclas = pygame.key.get_pressed()
-
         # Movimento horizontal do personagem
         if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
            jogo["player_x"] -= 5
 
         if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
            jogo["player_x"] += 5
- 
+
         # Impede o personagem de sair pelas laterais
         if jogo["player_x"] < 0:
            jogo["player_x"] = 0
- 
+
         if jogo["player_x"] > LARGURA - 60:
            jogo["player_x"] = LARGURA - 60
 
@@ -526,22 +574,6 @@ while rodando:
         ):
             jogo["obstaculos"].append([800, 405])
 
-        # Criação dos blocos em escada
-        if (
-            len(jogo["blocos"]) == 0
-            and len(jogo["obstaculos"]) > 0
-            and jogo["obstaculos"][-1][0] < 500
-        ):
-
-            if random.randint(0, 100) < 25:
-
-                quantidade = random.randint(3, 5)
-
-                for i in range(quantidade):
-                    x = 800 + i * 65
-                    y = 395 - i * 30
-
-                    jogo["blocos"].append([x, y])
 
         # Criação das moedas
         if (
@@ -616,9 +648,6 @@ while rodando:
         for obs in jogo["obstaculos"]:
             obs[0] -= velocidade
 
-        # Movimento dos blocos
-        for bloco in jogo["blocos"]:
-            bloco[0] -= velocidade
 
         # Movimento das moedas
         for moeda in jogo["moedas"]:
@@ -730,13 +759,6 @@ while rodando:
             tela.blit(
                 obstaculo_img,
                 (obs[0], obs[1])
-            )
-
-        # Desenha os blocos
-        for bloco in jogo["blocos"]:
-            tela.blit(
-                bloco_img,
-                (bloco[0], bloco[1])
             )
 
         # Desenha as moedas
