@@ -1,9 +1,9 @@
-
 import pygame
 import os
 import random
 
 from ranking import carregar_ranking, salvar_ranking
+
 from cortina import (
     converter_mouse,
     mostrar_tela,
@@ -11,20 +11,36 @@ from cortina import (
     RankingCortina
 )
 
+from predios import (
+    carregar_predios,
+    largura_predio,
+    criar_predio,
+    escolher_predio_compativel
+)
+
+from obstaculo import Teia
+from caixas import carregar_caixa, adicionar_caixa_no_predio
+
+
 pygame.init()
 
-# =====================================
+# =========================================================
 # CONFIGURAÇÕES
-# =====================================
+# =========================================================
 
 LARGURA = 800
 ALTURA = 500
 TAMANHO_PLAYER = 60
 
 tela = pygame.Surface((LARGURA, ALTURA))
-janela = pygame.display.set_mode((LARGURA, ALTURA), pygame.RESIZABLE)
+
+janela = pygame.display.set_mode(
+    (LARGURA, ALTURA),
+    pygame.RESIZABLE
+)
 
 pygame.display.set_caption("Jump Homem-Aranha")
+
 clock = pygame.time.Clock()
 
 PRETO = (0, 0, 0)
@@ -34,7 +50,12 @@ AMARELO = (255, 215, 0)
 fonte = pygame.font.SysFont(None, 36)
 fonte_grande = pygame.font.SysFont(None, 60)
 
-CHAO_Y = 420
+CHAO_Y = 410
+
+LIMITE_CAMERA_ESQUERDA = 180
+LIMITE_CAMERA_DIREITA = 430
+
+VELOCIDADE_PARALLAX = 0.25
 
 BOTAO_JOGAR = pygame.Rect(250, 270, 300, 50)
 BOTAO_RANKING = pygame.Rect(250, 335, 300, 50)
@@ -48,9 +69,10 @@ tela_cheia = False
 ranking = carregar_ranking()
 ranking_cortina = RankingCortina()
 
-# =====================================
-# CARREGAMENTO DAS IMAGENS
-# =====================================
+
+# =========================================================
+# CAMINHO DAS IMAGENS
+# =========================================================
 
 PASTA_IMAGENS = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -61,7 +83,10 @@ PASTA_IMAGENS = os.path.join(
 
 def carregar_imagem(nome, tamanho=None, alpha=False):
 
-    caminho = os.path.join(PASTA_IMAGENS, nome)
+    caminho = os.path.join(
+        PASTA_IMAGENS,
+        nome
+    )
 
     imagem = pygame.image.load(caminho)
 
@@ -78,6 +103,10 @@ def carregar_imagem(nome, tamanho=None, alpha=False):
 
     return imagem
 
+
+# =========================================================
+# CARREGAMENTO DAS IMAGENS
+# =========================================================
 
 try:
 
@@ -127,157 +156,16 @@ except Exception as erro:
     fundo_img.fill((35, 30, 70))
 
 
-# =====================================
-# CARREGAR E RECORTAR OS PRÉDIOS
-# =====================================
+# Carrega a caixa pelo arquivo caixas.py.
+caixa_img = carregar_caixa()
 
-CAIXAS_PREDIOS = [
-    (955, 17, 1235, 395, 180),
-    (1277, 84, 1551, 395, 240),
-    (296, 127, 581, 395, 228),
-    (634, 157, 871, 394, 226),
-    (8, 236, 259, 394, 294),
-    (654, 410, 1049, 713, 576),
-    (1115, 418, 1498, 719, 535),
-    (29, 528, 556, 713, 570),
-    (298, 774, 559, 965, 847),
-    (978, 784, 1548, 965, 833),
-    (39, 820, 201, 965, 820)
-]
-
-predios_imagens = []
+# Carrega os modelos dos prédios.
+predios_imagens = carregar_predios()
 
 
-def criar_predio_fallback():
-
-    imagem = pygame.Surface(
-        (300, 180),
-        pygame.SRCALPHA
-    )
-
-    pygame.draw.rect(
-        imagem,
-        (25, 35, 100),
-        (0, 35, 300, 145)
-    )
-
-    pygame.draw.rect(
-        imagem,
-        (45, 65, 150),
-        (0, 25, 300, 22)
-    )
-
-    for x in (35, 105, 175, 245):
-
-        pygame.draw.rect(
-            imagem,
-            (255, 170, 55),
-            (x, 75, 25, 45)
-        )
-
-    return {
-        "imagem": imagem,
-        "telhado": 25
-    }
-
-
-try:
-
-    predios_folha = carregar_imagem(
-        "predios_transparentes.png",
-        alpha=True
-    )
-
-    for x1, y1, x2, y2, telhado_original in CAIXAS_PREDIOS:
-
-        recorte = predios_folha.subsurface(
-            (x1, y1, x2 - x1, y2 - y1)
-        ).copy()
-
-        escala = min(
-            360 / recorte.get_width(),
-            220 / recorte.get_height()
-        )
-
-        novo_tamanho = (
-            max(1, int(recorte.get_width() * escala)),
-            max(1, int(recorte.get_height() * escala))
-        )
-
-        recorte = pygame.transform.smoothscale(
-            recorte,
-            novo_tamanho
-        )
-
-        deslocamento_telhado = int(
-            (telhado_original - y1) * escala
-        )
-
-        predios_imagens.append({
-            "imagem": recorte,
-            "telhado": deslocamento_telhado
-        })
-
-    print("Prédios carregados:", len(predios_imagens))
-
-except Exception as erro:
-
-    print("Erro ao carregar os prédios:", erro)
-
-    predios_imagens = [
-        criar_predio_fallback()
-    ]
-
-
-# =====================================
-# FUNÇÕES DOS PRÉDIOS
-# =====================================
-
-def largura_predio(predio):
-
-    return predio["imagem"].get_width()
-
-
-def criar_predio(x, altura_telhado, modelo=None):
-
-    if modelo is None:
-        modelo = random.choice(predios_imagens)
-
-    return {
-        "x": float(x),
-        "telhado_y": int(altura_telhado),
-        "imagem": modelo["imagem"],
-        "telhado_offset": modelo["telhado"],
-        "id": random.randint(1, 1000000000)
-    }
-
-
-def criar_moedas_predio(predio):
-
-    moedas = []
-
-    largura = largura_predio(predio)
-
-    quantidade = random.randint(1, 3)
-
-    for i in range(quantidade):
-
-        x = (
-            predio["x"]
-            + largura * 0.30
-            + i * 38
-        )
-
-        y = predio["telhado_y"] - random.randint(65, 90)
-
-        moedas.append([x, y])
-
-    return moedas
-
-
-# =====================================
-# REINICIAR JOGO
-# =====================================
+# =========================================================
+# RESETAR JOGO
+# =========================================================
 
 def resetar_jogo():
 
@@ -289,17 +177,21 @@ def resetar_jogo():
     primeiro_predio = criar_predio(
         0,
         CHAO_Y,
+        predios_imagens,
         modelo_inicial
     )
 
-    return {
+    jogo_novo = {
 
         "player_x": 100.0,
-        "player_y": CHAO_Y - TAMANHO_PLAYER,
+
+        "player_y": (
+            primeiro_predio["telhado_y"]
+            - TAMANHO_PLAYER
+        ),
 
         "vel_y": 0.0,
         "gravidade": 0.7,
-
         "no_chao": True,
         "tempo_pulo": 0,
 
@@ -307,23 +199,34 @@ def resetar_jogo():
 
         "predios": [primeiro_predio],
 
-        "moedas": [
-            [220, CHAO_Y - 85],
-            [260, CHAO_Y - 85]
-        ],
+        "caixas": [],
+        "teias": [],
+        "moedas": [],
 
         "moedas_coletadas": 0,
         "pontos": 0,
 
-        "velocidade_base": 2.0
+        "velocidade_base": 2.0,
+
+        "camera_x": 0.0,
+        "fundo_x": 0.0
     }
 
+    adicionar_caixa_no_predio(
+        jogo_novo,
+        primeiro_predio,
+        caixa_img
+    )
 
-# =====================================
+    return jogo_novo
+
+
+# =========================================================
 # ESTADOS DO JOGO
-# =====================================
+# =========================================================
 
 estado = "menu"
+
 nome_jogador = ""
 
 jogo = resetar_jogo()
@@ -331,17 +234,17 @@ jogo = resetar_jogo()
 rodando = True
 
 
-# =====================================
+# =========================================================
 # LOOP PRINCIPAL
-# =====================================
+# =========================================================
 
 while rodando:
 
     clock.tick(60)
 
-    # =================================
+    # =====================================================
     # EVENTOS
-    # =================================
+    # =====================================================
 
     for evento in pygame.event.get():
 
@@ -386,6 +289,18 @@ while rodando:
 
                     nome_jogador += evento.unicode
 
+            elif estado == "jogo":
+
+                # F lança a teia.
+                if evento.key == pygame.K_f:
+
+                    jogo["teias"].append(
+                        Teia(
+                            jogo["player_x"] + TAMANHO_PLAYER,
+                            jogo["player_y"] + 30
+                        )
+                    )
+
             elif estado == "ranking":
 
                 if evento.key == pygame.K_ESCAPE:
@@ -401,7 +316,10 @@ while rodando:
                 elif evento.key == pygame.K_ESCAPE:
 
                     estado = "menu"
-                    nome_jogador = ""
+
+        # =================================================
+        # CLIQUES DO MOUSE
+        # =================================================
 
         if (
             evento.type == pygame.MOUSEBUTTONDOWN
@@ -431,7 +349,9 @@ while rodando:
             ):
 
                 ranking = carregar_ranking()
+
                 ranking_cortina.iniciar()
+
                 estado = "ranking"
 
             elif (
@@ -481,9 +401,9 @@ while rodando:
         ALTURA
     )
 
-    # =================================
-    # MENU PRINCIPAL
-    # =================================
+    # =====================================================
+    # MENU
+    # =====================================================
 
     if estado == "menu":
 
@@ -536,7 +456,10 @@ while rodando:
         )
 
         caixa_nome = pygame.Rect(
-            200, 195, 400, 50
+            200,
+            195,
+            400,
+            50
         )
 
         pygame.draw.rect(
@@ -637,31 +560,39 @@ while rodando:
             )
         )
 
-    # =================================
+    # =====================================================
     # RANKING
-    # =================================
+    # =====================================================
 
     elif estado == "ranking":
 
         ranking_cortina.atualizar()
-        ranking_cortina.desenhar(tela, ranking)
 
-    # =================================
-    # JOGO - FASE DA CIDADE
-    # =================================
+        ranking_cortina.desenhar(
+            tela,
+            ranking
+        )
+
+    # =====================================================
+    # JOGO
+    # =====================================================
 
     elif estado == "jogo":
 
         teclas = pygame.key.get_pressed()
 
         player_y_anterior = jogo["player_y"]
+        player_x_anterior = jogo["player_x"]
 
-        # Fundo parado
-        tela.blit(fundo_img, (0, 0))
+        velocidade = min(
+            jogo["velocidade_base"]
+            + (jogo["pontos"] // 500) * 0.25,
+            5.5
+        )
 
-        # ---------------------------------
-        # MOVIMENTO HORIZONTAL
-        # ---------------------------------
+        # -----------------------------------------------
+        # MOVIMENTAÇÃO DO JOGADOR
+        # -----------------------------------------------
 
         if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
             jogo["player_x"] -= 4.5
@@ -671,90 +602,143 @@ while rodando:
 
         jogo["player_x"] = max(
             0,
-            min(jogo["player_x"], LARGURA - TAMANHO_PLAYER)
+            jogo["player_x"]
         )
 
-        # ---------------------------------
+        # -----------------------------------------------
         # PULO
-        # ---------------------------------
+        # -----------------------------------------------
 
-        if (
-            teclas[pygame.K_SPACE]
-            and jogo["no_chao"]
-        ):
+        if teclas[pygame.K_SPACE] and jogo["no_chao"]:
 
             jogo["vel_y"] = -15
             jogo["no_chao"] = False
             jogo["tempo_pulo"] = 0
             jogo["em_cima_de"] = None
 
-        if (
-            teclas[pygame.K_SPACE]
-            and not jogo["no_chao"]
-        ):
+        if teclas[pygame.K_SPACE] and not jogo["no_chao"]:
 
             if jogo["tempo_pulo"] < 8:
 
                 jogo["vel_y"] -= 0.35
                 jogo["tempo_pulo"] += 1
 
-        # ---------------------------------
-        # VELOCIDADE PROGRESSIVA
-        # ---------------------------------
-
-        velocidade = min(
-            jogo["velocidade_base"]
-            + (jogo["pontos"] // 500) * 0.25,
-            5.5
-        )
-
-        # O prédio e o personagem se deslocam juntos
-        # enquanto o personagem está apoiado no telhado.
-        if jogo["em_cima_de"] is not None:
-
-            for predio in jogo["predios"]:
-
-                if predio["id"] == jogo["em_cima_de"]:
-
-                    jogo["player_x"] -= velocidade
-                    break
-
-        # ---------------------------------
-        # GRAVIDADE
-        # ---------------------------------
-
         jogo["vel_y"] += jogo["gravidade"]
+
         jogo["player_y"] += jogo["vel_y"]
 
         jogo["no_chao"] = False
 
-        # ---------------------------------
-        # MOVIMENTAR PRÉDIOS
-        # ---------------------------------
+        # -----------------------------------------------
+        # MOVIMENTAÇÃO DOS PRÉDIOS
+        # -----------------------------------------------
 
         for predio in jogo["predios"]:
+
             predio["x"] -= velocidade
 
-        # ---------------------------------
-        # MOVIMENTAR MOEDAS
-        # ---------------------------------
+            for obstaculo in predio["obstaculos"]:
+                obstaculo["x"] -= velocidade
+
+        # -----------------------------------------------
+        # MOVIMENTAÇÃO DAS MOEDAS
+        # -----------------------------------------------
 
         for moeda in jogo["moedas"]:
             moeda[0] -= velocidade
 
-        # ---------------------------------
+        # -----------------------------------------------
+        # MOVIMENTAÇÃO DAS CAIXAS
+        # -----------------------------------------------
+
+        for caixa in jogo["caixas"]:
+            caixa.mover(velocidade)
+
+        # -----------------------------------------------
+        # MOVIMENTAÇÃO DAS TEIAS
+        # -----------------------------------------------
+
+        for teia in jogo["teias"]:
+            teia.mover()
+
+        # -----------------------------------------------
+        # CÂMERA
+        # -----------------------------------------------
+
+        deslocamento_camera = 0.0
+
+        if jogo["player_x"] > LIMITE_CAMERA_DIREITA:
+
+            deslocamento_camera = (
+                jogo["player_x"] - LIMITE_CAMERA_DIREITA
+            )
+
+        elif jogo["player_x"] < LIMITE_CAMERA_ESQUERDA:
+
+            deslocamento_camera = (
+                jogo["player_x"] - LIMITE_CAMERA_ESQUERDA
+            )
+
+        if deslocamento_camera != 0:
+
+            jogo["player_x"] -= deslocamento_camera
+
+            for predio in jogo["predios"]:
+
+                predio["x"] -= deslocamento_camera
+
+                for obstaculo in predio.get("obstaculos", []):
+                    obstaculo["x"] -= deslocamento_camera
+
+            for moeda in jogo["moedas"]:
+                moeda[0] -= deslocamento_camera
+
+            for caixa in jogo["caixas"]:
+                caixa.x -= deslocamento_camera
+
+            for teia in jogo["teias"]:
+                teia.x -= deslocamento_camera
+
+            jogo["camera_x"] += deslocamento_camera
+
+        # -----------------------------------------------
+        # FUNDO
+        # -----------------------------------------------
+
+        movimento_fundo = (
+            velocidade + deslocamento_camera
+        ) * VELOCIDADE_PARALLAX
+
+        jogo["fundo_x"] = (
+            jogo["fundo_x"] + movimento_fundo
+        ) % LARGURA
+
+        fundo_x = int(jogo["fundo_x"])
+
+        tela.blit(
+            fundo_img,
+            (-fundo_x, 0)
+        )
+
+        tela.blit(
+            fundo_img,
+            (LARGURA - fundo_x, 0)
+        )
+
+        # -----------------------------------------------
         # CRIAR NOVOS PRÉDIOS
-        # ---------------------------------
+        # -----------------------------------------------
 
         ultimo_predio = jogo["predios"][-1]
 
         if (
             ultimo_predio["x"]
             + largura_predio(ultimo_predio)
-            + 95 < LARGURA
+            + 60
+            < LARGURA
         ):
 
-            distancia = random.randint(75, 115)
+            distancia = random.randint(45, 75)
 
             novo_x = (
                 ultimo_predio["x"]
@@ -762,22 +746,31 @@ while rodando:
                 + distancia
             )
 
-            nova_altura = random.randint(365, 420)
+            modelo = escolher_predio_compativel(
+                predios_imagens,
+                ultimo_predio["telhado_y"],
+                CHAO_Y
+            )
 
             novo_predio = criar_predio(
                 novo_x,
-                nova_altura
+                CHAO_Y,
+                predios_imagens,
+                modelo
             )
 
             jogo["predios"].append(novo_predio)
 
-            jogo["moedas"].extend(
-                criar_moedas_predio(novo_predio)
+            # A criação das caixas fica no arquivo caixas.py.
+            adicionar_caixa_no_predio(
+                jogo,
+                novo_predio,
+                caixa_img
             )
 
-        # ---------------------------------
+        # -----------------------------------------------
         # REMOVER PRÉDIOS FORA DA TELA
-        # ---------------------------------
+        # -----------------------------------------------
 
         jogo["predios"] = [
             predio
@@ -785,9 +778,9 @@ while rodando:
             if predio["x"] + largura_predio(predio) > -60
         ]
 
-        # ---------------------------------
-        # REMOVER MOEDAS FORA DA TELA
-        # ---------------------------------
+        # -----------------------------------------------
+        # REMOVER OBJETOS FORA DA TELA
+        # -----------------------------------------------
 
         jogo["moedas"] = [
             moeda
@@ -795,9 +788,143 @@ while rodando:
             if moeda[0] > -35
         ]
 
-        # ---------------------------------
-        # COLISÃO COM OS TELHADOS
-        # ---------------------------------
+        jogo["caixas"] = [
+            caixa
+            for caixa in jogo["caixas"]
+            if caixa.x > -60 and caixa.ativa
+        ]
+
+        jogo["teias"] = [
+            teia
+            for teia in jogo["teias"]
+            if not teia.saiu_da_tela()
+        ]
+
+        # -----------------------------------------------
+        # RETÂNGULO DO JOGADOR
+        # -----------------------------------------------
+
+        player_rect = pygame.Rect(
+            int(jogo["player_x"]),
+            int(jogo["player_y"]),
+            TAMANHO_PLAYER,
+            TAMANHO_PLAYER
+        )
+
+        player_anterior_rect = pygame.Rect(
+            int(player_x_anterior - deslocamento_camera),
+            int(player_y_anterior),
+            TAMANHO_PLAYER,
+            TAMANHO_PLAYER
+        )
+
+        # -----------------------------------------------
+        # COLISÃO COM ESTRUTURAS DOS PRÉDIOS
+        # -----------------------------------------------
+
+        for predio in jogo["predios"]:
+
+            for obstaculo in predio.get("obstaculos", []):
+
+                obstaculo_rect = pygame.Rect(
+                    int(obstaculo["x"]),
+                    int(obstaculo["y"]),
+                    int(obstaculo["largura"]),
+                    int(obstaculo["altura"])
+                )
+
+                obstaculo_anterior = obstaculo_rect.move(
+                    velocidade + deslocamento_camera,
+                    0
+                )
+
+                chegou_por_cima = (
+                    jogo["vel_y"] >= 0
+                    and player_anterior_rect.bottom
+                    <= obstaculo_anterior.top + 8
+                    and player_rect.bottom >= obstaculo_rect.top
+                    and player_rect.right > obstaculo_rect.left
+                    and player_rect.left < obstaculo_rect.right
+                )
+
+                if chegou_por_cima:
+
+                    jogo["player_y"] = (
+                        obstaculo_rect.top - TAMANHO_PLAYER
+                    )
+
+                    jogo["vel_y"] = 0
+                    jogo["no_chao"] = True
+                    jogo["em_cima_de"] = predio["id"]
+
+                    player_rect.y = int(jogo["player_y"])
+
+                    continue
+
+                bateu_por_baixo = (
+                    jogo["vel_y"] < 0
+                    and player_anterior_rect.top
+                    >= obstaculo_anterior.bottom
+                    and player_rect.top <= obstaculo_rect.bottom
+                    and player_rect.right > obstaculo_rect.left
+                    and player_rect.left < obstaculo_rect.right
+                )
+
+                if bateu_por_baixo:
+
+                    jogo["player_y"] = obstaculo_rect.bottom
+                    jogo["vel_y"] = 0
+
+                    player_rect.y = int(jogo["player_y"])
+
+                player_rect.y = int(jogo["player_y"])
+
+                if player_rect.colliderect(obstaculo_rect):
+
+                    if (
+                        player_anterior_rect.right
+                        <= obstaculo_anterior.left
+                    ):
+
+                        jogo["player_x"] = (
+                            obstaculo_rect.left - TAMANHO_PLAYER
+                        )
+
+                    elif (
+                        player_anterior_rect.left
+                        >= obstaculo_anterior.right
+                    ):
+
+                        jogo["player_x"] = obstaculo_rect.right
+
+                    else:
+
+                        distancia_esquerda = abs(
+                            player_rect.right - obstaculo_rect.left
+                        )
+
+                        distancia_direita = abs(
+                            obstaculo_rect.right - player_rect.left
+                        )
+
+                        if distancia_esquerda <= distancia_direita:
+
+                            jogo["player_x"] = (
+                                obstaculo_rect.left - TAMANHO_PLAYER
+                            )
+
+                        else:
+
+                            jogo["player_x"] = obstaculo_rect.right
+
+                    player_rect.x = int(jogo["player_x"])
+
+            player_rect.x = int(jogo["player_x"])
+            player_rect.y = int(jogo["player_y"])
+
+        # -----------------------------------------------
+        # COLISÃO COM TELHADOS
+        # -----------------------------------------------
 
         player_rect = pygame.Rect(
             int(jogo["player_x"]),
@@ -840,38 +967,59 @@ while rodando:
 
                 break
 
-        # Verifica se ainda está apoiado no prédio.
-        if jogo["em_cima_de"] is not None and not jogo["no_chao"]:
+        if (
+            jogo["em_cima_de"] is not None
+            and not jogo["no_chao"]
+        ):
 
             jogo["em_cima_de"] = None
 
-        if jogo["em_cima_de"] is not None and not jogo["no_chao"]:
+        # -----------------------------------------------
+        # COLISÃO DA TEIA COM AS CAIXAS
+        # -----------------------------------------------
 
-            for predio in jogo["predios"]:
+        for teia in jogo["teias"][:]:
 
-                if predio["id"] == jogo["em_cima_de"]:
+            acertou_caixa = False
 
-                    faixa = pygame.Rect(
-                        int(predio["x"] + 8),
-                        predio["telhado_y"] - 4,
-                        max(1, largura_predio(predio) - 16),
-                        8
-                    )
+            for caixa in jogo["caixas"][:]:
 
-                    if player_rect.colliderect(faixa):
+                if teia.rect().colliderect(caixa.rect()):
 
-                        jogo["player_y"] = (
-                            predio["telhado_y"] - TAMANHO_PLAYER
-                        )
+                    caixa.ativa = False
 
-                        jogo["vel_y"] = 0
-                        jogo["no_chao"] = True
+                    # Recompensa em moedas.
+                    jogo["moedas"].append([
+                        int(caixa.x),
+                        int(caixa.y)
+                    ])
 
-                    else:
+                    # Pontuação por destruir a caixa.
+                    jogo["pontos"] += 50
 
-                        jogo["em_cima_de"] = None
+                    if teia in jogo["teias"]:
+                        jogo["teias"].remove(teia)
+
+                    acertou_caixa = True
 
                     break
+
+            if acertou_caixa:
+                continue
+
+        # -----------------------------------------------
+        # REMOVER CAIXAS DESTRUÍDAS
+        # -----------------------------------------------
+
+        jogo["caixas"] = [
+            caixa
+            for caixa in jogo["caixas"]
+            if caixa.ativa
+        ]
+
+        # -----------------------------------------------
+        # COLETAR MOEDAS
+        # -----------------------------------------------
 
         player_rect = pygame.Rect(
             int(jogo["player_x"]),
@@ -879,10 +1027,6 @@ while rodando:
             TAMANHO_PLAYER,
             TAMANHO_PLAYER
         )
-
-        # ---------------------------------
-        # COLETAR MOEDAS
-        # ---------------------------------
 
         for moeda in jogo["moedas"][:]:
 
@@ -900,9 +1044,9 @@ while rodando:
 
                 jogo["moedas"].remove(moeda)
 
-        # ---------------------------------
-        # DERROTA AO CAIR
-        # ---------------------------------
+        # -----------------------------------------------
+        # GAME OVER
+        # -----------------------------------------------
 
         if jogo["player_y"] > ALTURA:
 
@@ -918,15 +1062,9 @@ while rodando:
         if estado == "game_over":
             continue
 
-        # ---------------------------------
-        # PONTUAÇÃO
-        # ---------------------------------
-
-        jogo["pontos"] += 1
-
-        # ---------------------------------
+        # -----------------------------------------------
         # DESENHAR PRÉDIOS
-        # ---------------------------------
+        # -----------------------------------------------
 
         for predio in jogo["predios"]:
 
@@ -943,9 +1081,16 @@ while rodando:
                 )
             )
 
-        # ---------------------------------
+        # -----------------------------------------------
+        # DESENHAR CAIXAS
+        # -----------------------------------------------
+
+        for caixa in jogo["caixas"]:
+            caixa.desenhar(tela)
+
+        # -----------------------------------------------
         # DESENHAR MOEDAS
-        # ---------------------------------
+        # -----------------------------------------------
 
         for moeda in jogo["moedas"]:
 
@@ -964,13 +1109,23 @@ while rodando:
             pygame.draw.circle(
                 tela,
                 BRANCO,
-                (centro[0] - 4, centro[1] - 4),
+                (
+                    centro[0] - 4,
+                    centro[1] - 4
+                ),
                 3
             )
 
-        # ---------------------------------
-        # DESENHAR PERSONAGEM
-        # ---------------------------------
+        # -----------------------------------------------
+        # DESENHAR TEIAS
+        # -----------------------------------------------
+
+        for teia in jogo["teias"]:
+            teia.desenhar(tela)
+
+        # -----------------------------------------------
+        # DESENHAR JOGADOR
+        # -----------------------------------------------
 
         tela.blit(
             player_img,
@@ -980,26 +1135,45 @@ while rodando:
             )
         )
 
-        # ---------------------------------
+        # -----------------------------------------------
         # HUD
-        # ---------------------------------
+        # -----------------------------------------------
 
         texto = fonte.render(
-            f"Pontos: {jogo['pontos']}   "
-            f"Moedas: {jogo['moedas_coletadas']}",
+            (
+                f"Pontos: {jogo['pontos']}   "
+                f"Moedas: {jogo['moedas_coletadas']}"
+            ),
             True,
             BRANCO
         )
 
-        tela.blit(texto, (10, 10))
+        tela.blit(
+            texto,
+            (10, 10)
+        )
 
-    # =================================
+        texto_teia = fonte.render(
+            "F: LANCAR TEIA",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            texto_teia,
+            (10, 45)
+        )
+
+    # =====================================================
     # GAME OVER
-    # =================================
+    # =====================================================
 
     elif estado == "game_over":
 
-        tela.blit(game_over_img, (0, 0))
+        tela.blit(
+            game_over_img,
+            (0, 0)
+        )
 
         titulo = fonte_grande.render(
             "GAME OVER",
@@ -1032,7 +1206,10 @@ while rodando:
                 )
             )
 
-        tela.blit(titulo, titulo_rect)
+        tela.blit(
+            titulo,
+            titulo_rect
+        )
 
         nome = fonte.render(
             f"Jogador: {nome_jogador}",
@@ -1042,7 +1219,9 @@ while rodando:
 
         tela.blit(
             nome,
-            nome.get_rect(center=(400, 130))
+            nome.get_rect(
+                center=(400, 130)
+            )
         )
 
         pontos = fonte.render(
@@ -1053,7 +1232,9 @@ while rodando:
 
         tela.blit(
             pontos,
-            pontos.get_rect(center=(400, 165))
+            pontos.get_rect(
+                center=(400, 165)
+            )
         )
 
         moedas = fonte.render(
@@ -1064,7 +1245,9 @@ while rodando:
 
         tela.blit(
             moedas,
-            moedas.get_rect(center=(400, 200))
+            moedas.get_rect(
+                center=(400, 200)
+            )
         )
 
         cor_jogar = (
@@ -1119,9 +1302,9 @@ while rodando:
             )
         )
 
-    # =================================
+    # =====================================================
     # ATUALIZAR TELA
-    # =================================
+    # =====================================================
 
     mostrar_tela(
         tela,
