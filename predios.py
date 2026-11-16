@@ -468,3 +468,21 @@ def criar_moedas_predio(predio):
     )
     
     return moedas
+
+def rect_telhado(predio):
+    """Retângulo sólido do prédio, do telhado até a base."""
+    return pygame.Rect(
+        round(predio["x"]),
+        predio["telhado_y"],
+        largura_predio(predio),
+        predio["base_y"] - predio["telhado_y"]
+    )
+
+
+def rect_obstaculo(obstaculo):
+    return pygame.Rect(
+        obstaculo["x"],
+        obstaculo["y"],
+        obstaculo["largura"],
+        obstaculo["altura"]
+    )

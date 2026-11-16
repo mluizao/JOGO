@@ -20,6 +20,10 @@ from predios import (
 
 from obstaculo import Teia
 from caixas import carregar_caixa, adicionar_caixa_no_predio
+from colisoes import resolver_colisoes
+from animacao import AnimacaoPlayer
+
+animacao_player = AnimacaoPlayer()
 
 
 pygame.init()
@@ -184,6 +188,7 @@ def resetar_jogo():
     jogo_novo = {
 
         "player_x": 100.0,
+        "direcao_player": 1,  # 1 = direita; -1 = esquerda
 
         "player_y": (
             primeiro_predio["telhado_y"]
@@ -583,6 +588,7 @@ while rodando:
 
         player_y_anterior = jogo["player_y"]
         player_x_anterior = jogo["player_x"]
+        no_chao_anterior = jogo["no_chao"]
 
         velocidade = min(
             jogo["velocidade_base"]
@@ -596,9 +602,11 @@ while rodando:
 
         if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
             jogo["player_x"] -= 4.5
+            jogo["direcao_player"] = -1
 
         if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
             jogo["player_x"] += 4.5
+            jogo["direcao_player"] = 1
 
         jogo["player_x"] = max(
             0,
@@ -801,178 +809,27 @@ while rodando:
         ]
 
         # -----------------------------------------------
-        # RETÂNGULO DO JOGADOR
+        # COLISÕES DO JOGADOR
         # -----------------------------------------------
 
-        player_rect = pygame.Rect(
-            int(jogo["player_x"]),
-            int(jogo["player_y"]),
-            TAMANHO_PLAYER,
-            TAMANHO_PLAYER
+        velocidade_impacto = jogo["vel_y"]
+
+        resolver_colisoes(
+            jogo,
+            velocidade,
+            deslocamento_camera,
+            player_x_anterior,
+            player_y_anterior
         )
 
-        player_anterior_rect = pygame.Rect(
-            int(player_x_anterior - deslocamento_camera),
-            int(player_y_anterior),
-            TAMANHO_PLAYER,
-            TAMANHO_PLAYER
+        if not no_chao_anterior and jogo["no_chao"]:
+            animacao_player.pousar(velocidade_impacto)
+
+        animacao_player.atualizar(
+            jogo["no_chao"],
+            jogo["vel_y"],
+            velocidade
         )
-
-        # -----------------------------------------------
-        # COLISÃO COM ESTRUTURAS DOS PRÉDIOS
-        # -----------------------------------------------
-
-        for predio in jogo["predios"]:
-
-            for obstaculo in predio.get("obstaculos", []):
-
-                obstaculo_rect = pygame.Rect(
-                    int(obstaculo["x"]),
-                    int(obstaculo["y"]),
-                    int(obstaculo["largura"]),
-                    int(obstaculo["altura"])
-                )
-
-                obstaculo_anterior = obstaculo_rect.move(
-                    velocidade + deslocamento_camera,
-                    0
-                )
-
-                chegou_por_cima = (
-                    jogo["vel_y"] >= 0
-                    and player_anterior_rect.bottom
-                    <= obstaculo_anterior.top + 8
-                    and player_rect.bottom >= obstaculo_rect.top
-                    and player_rect.right > obstaculo_rect.left
-                    and player_rect.left < obstaculo_rect.right
-                )
-
-                if chegou_por_cima:
-
-                    jogo["player_y"] = (
-                        obstaculo_rect.top - TAMANHO_PLAYER
-                    )
-
-                    jogo["vel_y"] = 0
-                    jogo["no_chao"] = True
-                    jogo["em_cima_de"] = predio["id"]
-
-                    player_rect.y = int(jogo["player_y"])
-
-                    continue
-
-                bateu_por_baixo = (
-                    jogo["vel_y"] < 0
-                    and player_anterior_rect.top
-                    >= obstaculo_anterior.bottom
-                    and player_rect.top <= obstaculo_rect.bottom
-                    and player_rect.right > obstaculo_rect.left
-                    and player_rect.left < obstaculo_rect.right
-                )
-
-                if bateu_por_baixo:
-
-                    jogo["player_y"] = obstaculo_rect.bottom
-                    jogo["vel_y"] = 0
-
-                    player_rect.y = int(jogo["player_y"])
-
-                player_rect.y = int(jogo["player_y"])
-
-                if player_rect.colliderect(obstaculo_rect):
-
-                    if (
-                        player_anterior_rect.right
-                        <= obstaculo_anterior.left
-                    ):
-
-                        jogo["player_x"] = (
-                            obstaculo_rect.left - TAMANHO_PLAYER
-                        )
-
-                    elif (
-                        player_anterior_rect.left
-                        >= obstaculo_anterior.right
-                    ):
-
-                        jogo["player_x"] = obstaculo_rect.right
-
-                    else:
-
-                        distancia_esquerda = abs(
-                            player_rect.right - obstaculo_rect.left
-                        )
-
-                        distancia_direita = abs(
-                            obstaculo_rect.right - player_rect.left
-                        )
-
-                        if distancia_esquerda <= distancia_direita:
-
-                            jogo["player_x"] = (
-                                obstaculo_rect.left - TAMANHO_PLAYER
-                            )
-
-                        else:
-
-                            jogo["player_x"] = obstaculo_rect.right
-
-                    player_rect.x = int(jogo["player_x"])
-
-            player_rect.x = int(jogo["player_x"])
-            player_rect.y = int(jogo["player_y"])
-
-        # -----------------------------------------------
-        # COLISÃO COM TELHADOS
-        # -----------------------------------------------
-
-        player_rect = pygame.Rect(
-            int(jogo["player_x"]),
-            int(jogo["player_y"]),
-            TAMANHO_PLAYER,
-            TAMANHO_PLAYER
-        )
-
-        for predio in jogo["predios"]:
-
-            topo_telhado = predio["telhado_y"]
-
-            telhado_rect = pygame.Rect(
-                int(predio["x"] + 8),
-                topo_telhado - 8,
-                max(1, largura_predio(predio) - 16),
-                12
-            )
-
-            chegou_por_cima = (
-                jogo["vel_y"] >= 0
-                and player_y_anterior + TAMANHO_PLAYER
-                <= topo_telhado + 12
-            )
-
-            if (
-                player_rect.colliderect(telhado_rect)
-                and chegou_por_cima
-            ):
-
-                jogo["player_y"] = (
-                    topo_telhado - TAMANHO_PLAYER
-                )
-
-                jogo["vel_y"] = 0
-                jogo["no_chao"] = True
-                jogo["em_cima_de"] = predio["id"]
-
-                player_rect.y = int(jogo["player_y"])
-
-                break
-
-        if (
-            jogo["em_cima_de"] is not None
-            and not jogo["no_chao"]
-        ):
-
-            jogo["em_cima_de"] = None
 
         # -----------------------------------------------
         # COLISÃO DA TEIA COM AS CAIXAS
@@ -1123,16 +980,19 @@ while rodando:
         for teia in jogo["teias"]:
             teia.desenhar(tela)
 
+
         # -----------------------------------------------
         # DESENHAR JOGADOR
         # -----------------------------------------------
 
-        tela.blit(
+        animacao_player.desenhar(
+            tela,
             player_img,
-            (
-                int(jogo["player_x"]),
-                int(jogo["player_y"])
-            )
+            int(jogo["player_x"]),
+            int(jogo["player_y"]),
+            TAMANHO_PLAYER,
+            ajuste_pes=0,
+            direcao=jogo["direcao_player"]
         )
 
         # -----------------------------------------------
