@@ -76,3 +76,24 @@ f:150
 d:0
 s:75
 ssarinha:275
+s:75
+ssss:75
+sss:0
+sss:150
+sss:75
+sss:75
+sss:150
+ney mato grosso:75
+pi:225
+ vff:100
+ vff:0
+ vff:0
+ vff:175
+ vff:0
+j:0
+j:350
+gg:100
+s:250
+ff:100
+teste:100
+testeeeeeeeeee:350

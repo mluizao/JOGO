@@ -1,3 +1,4 @@
+
 import pygame
 import os
 import random
@@ -22,14 +23,13 @@ from obstaculo import Teia
 from caixas import carregar_caixa, adicionar_caixa_no_predio
 from colisoes import resolver_colisoes
 from animacao import AnimacaoPlayer
-
-animacao_player = AnimacaoPlayer()
+from Vilao1 import Vilao1
 
 
 pygame.init()
 
 # =========================================================
-# CONFIGURAÇÕES
+# CONFIGURACOES
 # =========================================================
 
 LARGURA = 800
@@ -43,6 +43,8 @@ janela = pygame.display.set_mode(
     pygame.RESIZABLE
 )
 
+animacao_player = AnimacaoPlayer()
+
 pygame.display.set_caption("Jump Homem-Aranha")
 
 clock = pygame.time.Clock()
@@ -50,6 +52,9 @@ clock = pygame.time.Clock()
 PRETO = (0, 0, 0)
 BRANCO = (255, 255, 255)
 AMARELO = (255, 215, 0)
+VERDE = (30, 210, 70)
+VERMELHO = (220, 35, 35)
+CINZA = (50, 50, 50)
 
 fonte = pygame.font.SysFont(None, 36)
 fonte_grande = pygame.font.SysFont(None, 60)
@@ -109,6 +114,48 @@ def carregar_imagem(nome, tamanho=None, alpha=False):
 
 
 # =========================================================
+# EFEITO VISUAL DO DISPARO DA TEIA
+# =========================================================
+
+def desenhar_efeito_teia(tela, x, y, direcao):
+
+    if direcao == 1:
+
+        inicio = (x + 43, y + 27)
+        meio = (x + 62, y + 22)
+        fim = (x + 83, y + 16)
+
+    else:
+
+        inicio = (x + 17, y + 27)
+        meio = (x - 2, y + 22)
+        fim = (x - 23, y + 16)
+
+    pygame.draw.line(
+        tela,
+        (230, 230, 255),
+        inicio,
+        meio,
+        4
+    )
+
+    pygame.draw.line(
+        tela,
+        BRANCO,
+        meio,
+        fim,
+        3
+    )
+
+    pygame.draw.circle(
+        tela,
+        BRANCO,
+        fim,
+        4
+    )
+
+
+# =========================================================
 # CARREGAMENTO DAS IMAGENS
 # =========================================================
 
@@ -160,10 +207,8 @@ except Exception as erro:
     fundo_img.fill((35, 30, 70))
 
 
-# Carrega a caixa pelo arquivo caixas.py.
 caixa_img = carregar_caixa()
 
-# Carrega os modelos dos prédios.
 predios_imagens = carregar_predios()
 
 
@@ -188,7 +233,7 @@ def resetar_jogo():
     jogo_novo = {
 
         "player_x": 100.0,
-        "direcao_player": 1,  # 1 = direita; -1 = esquerda
+        "direcao_player": 1,
 
         "player_y": (
             primeiro_predio["telhado_y"]
@@ -207,6 +252,18 @@ def resetar_jogo():
         "caixas": [],
         "teias": [],
         "moedas": [],
+
+        # VIDA DO PERSONAGEM
+        "vida_player": 100,
+        "vida_maxima_player": 100,
+        "tempo_invulnerabilidade": 0,
+
+        # ANIMACAO DO DISPARO
+        "tempo_animacao_teia": 0,
+
+        # VILAO 1
+        "vilao1": None,
+        "tempo_vilao": random.randint(300, 480),
 
         "moedas_coletadas": 0,
         "pontos": 0,
@@ -296,7 +353,7 @@ while rodando:
 
             elif estado == "jogo":
 
-                # F lança a teia.
+                # F LANÇA A TEIA E ATIVA O EFEITO VISUAL.
                 if evento.key == pygame.K_f:
 
                     jogo["teias"].append(
@@ -305,6 +362,8 @@ while rodando:
                             jogo["player_y"] + 30
                         )
                     )
+
+                    jogo["tempo_animacao_teia"] = 12
 
             elif estado == "ranking":
 
@@ -597,14 +656,24 @@ while rodando:
         )
 
         # -----------------------------------------------
-        # MOVIMENTAÇÃO DO JOGADOR
+        # TEMPORIZADOR DA ANIMACAO DA TEIA
+        # -----------------------------------------------
+
+        if jogo["tempo_animacao_teia"] > 0:
+
+            jogo["tempo_animacao_teia"] -= 1
+
+        # -----------------------------------------------
+        # MOVIMENTACAO DO JOGADOR
         # -----------------------------------------------
 
         if teclas[pygame.K_LEFT] or teclas[pygame.K_a]:
+
             jogo["player_x"] -= 4.5
             jogo["direcao_player"] = -1
 
         if teclas[pygame.K_RIGHT] or teclas[pygame.K_d]:
+
             jogo["player_x"] += 4.5
             jogo["direcao_player"] = 1
 
@@ -614,7 +683,7 @@ while rodando:
         )
 
         # -----------------------------------------------
-        # PULO
+        # PULO E QUEDA
         # -----------------------------------------------
 
         if teclas[pygame.K_SPACE] and jogo["no_chao"]:
@@ -638,7 +707,7 @@ while rodando:
         jogo["no_chao"] = False
 
         # -----------------------------------------------
-        # MOVIMENTAÇÃO DOS PRÉDIOS
+        # MOVIMENTACAO DOS PREDIOS
         # -----------------------------------------------
 
         for predio in jogo["predios"]:
@@ -649,28 +718,28 @@ while rodando:
                 obstaculo["x"] -= velocidade
 
         # -----------------------------------------------
-        # MOVIMENTAÇÃO DAS MOEDAS
+        # MOVIMENTACAO DAS MOEDAS
         # -----------------------------------------------
 
         for moeda in jogo["moedas"]:
             moeda[0] -= velocidade
 
         # -----------------------------------------------
-        # MOVIMENTAÇÃO DAS CAIXAS
+        # MOVIMENTACAO DAS CAIXAS
         # -----------------------------------------------
 
         for caixa in jogo["caixas"]:
             caixa.mover(velocidade)
 
         # -----------------------------------------------
-        # MOVIMENTAÇÃO DAS TEIAS
+        # MOVIMENTACAO DAS TEIAS
         # -----------------------------------------------
 
         for teia in jogo["teias"]:
             teia.mover()
 
         # -----------------------------------------------
-        # CÂMERA
+        # CAMERA
         # -----------------------------------------------
 
         deslocamento_camera = 0.0
@@ -734,7 +803,7 @@ while rodando:
         )
 
         # -----------------------------------------------
-        # CRIAR NOVOS PRÉDIOS
+        # CRIAR NOVOS PREDIOS
         # -----------------------------------------------
 
         ultimo_predio = jogo["predios"][-1]
@@ -769,7 +838,6 @@ while rodando:
 
             jogo["predios"].append(novo_predio)
 
-            # A criação das caixas fica no arquivo caixas.py.
             adicionar_caixa_no_predio(
                 jogo,
                 novo_predio,
@@ -777,7 +845,7 @@ while rodando:
             )
 
         # -----------------------------------------------
-        # REMOVER PRÉDIOS FORA DA TELA
+        # REMOVER PREDIOS FORA DA TELA
         # -----------------------------------------------
 
         jogo["predios"] = [
@@ -809,7 +877,41 @@ while rodando:
         ]
 
         # -----------------------------------------------
-        # COLISÕES DO JOGADOR
+        # VILAO 1: APARECIMENTO E MOVIMENTACAO
+        # -----------------------------------------------
+
+        if jogo["vilao1"] is None:
+
+            jogo["tempo_vilao"] -= 1
+
+            if jogo["tempo_vilao"] <= 0:
+
+                jogo["vilao1"] = Vilao1(
+                    PASTA_IMAGENS,
+                    850,
+                    random.randint(100, 220)
+                )
+
+        else:
+
+            jogo["vilao1"].atualizar(
+                velocidade,
+                deslocamento_camera,
+                jogo["player_x"],
+                jogo["player_y"]
+            )
+
+            if not jogo["vilao1"].ativo:
+
+                jogo["vilao1"] = None
+
+                jogo["tempo_vilao"] = random.randint(
+                    480,
+                    720
+                )
+
+        # -----------------------------------------------
+        # COLISOES DO JOGADOR COM OS PREDIOS
         # -----------------------------------------------
 
         velocidade_impacto = jogo["vel_y"]
@@ -823,8 +925,13 @@ while rodando:
         )
 
         if not no_chao_anterior and jogo["no_chao"]:
-            animacao_player.pousar(velocidade_impacto)
 
+            animacao_player.pousar(
+                velocidade_impacto
+            )
+
+        # Mantem a chamada compativel com o animacao.py
+        # que foi enviado anteriormente.
         animacao_player.atualizar(
             jogo["no_chao"],
             jogo["vel_y"],
@@ -832,7 +939,7 @@ while rodando:
         )
 
         # -----------------------------------------------
-        # COLISÃO DA TEIA COM AS CAIXAS
+        # COLISAO DA TEIA COM AS CAIXAS
         # -----------------------------------------------
 
         for teia in jogo["teias"][:]:
@@ -845,13 +952,11 @@ while rodando:
 
                     caixa.ativa = False
 
-                    # Recompensa em moedas.
                     jogo["moedas"].append([
                         int(caixa.x),
                         int(caixa.y)
                     ])
 
-                    # Pontuação por destruir a caixa.
                     jogo["pontos"] += 50
 
                     if teia in jogo["teias"]:
@@ -865,7 +970,31 @@ while rodando:
                 continue
 
         # -----------------------------------------------
-        # REMOVER CAIXAS DESTRUÍDAS
+        # COLISAO DA TEIA COM O VILAO
+        # -----------------------------------------------
+
+        vilao = jogo["vilao1"]
+
+        if vilao is not None and vilao.estado != "atingido":
+
+            for teia in jogo["teias"][:]:
+
+                if teia.rect().colliderect(vilao.rect()):
+
+                    derrotou = vilao.receber_dano(25)
+
+                    if derrotou:
+
+                        jogo["pontos"] += 100
+                        jogo["moedas_coletadas"] += 2
+
+                    if teia in jogo["teias"]:
+                        jogo["teias"].remove(teia)
+
+                    break
+
+        # -----------------------------------------------
+        # REMOVER CAIXAS DESTRUIDAS
         # -----------------------------------------------
 
         jogo["caixas"] = [
@@ -875,7 +1004,7 @@ while rodando:
         ]
 
         # -----------------------------------------------
-        # COLETAR MOEDAS
+        # RETANGULO DO JOGADOR
         # -----------------------------------------------
 
         player_rect = pygame.Rect(
@@ -884,6 +1013,10 @@ while rodando:
             TAMANHO_PLAYER,
             TAMANHO_PLAYER
         )
+
+        # -----------------------------------------------
+        # COLETAR MOEDAS
+        # -----------------------------------------------
 
         for moeda in jogo["moedas"][:]:
 
@@ -902,10 +1035,52 @@ while rodando:
                 jogo["moedas"].remove(moeda)
 
         # -----------------------------------------------
+        # PAPEIS ATINGEM O JOGADOR
+        # -----------------------------------------------
+
+        if jogo["tempo_invulnerabilidade"] > 0:
+
+            jogo["tempo_invulnerabilidade"] -= 1
+
+        vilao = jogo["vilao1"]
+
+        if (
+            vilao is not None
+            and jogo["tempo_invulnerabilidade"] == 0
+        ):
+
+            for papel in vilao.papeis[:]:
+
+                papel_rect = pygame.Rect(
+                    int(papel["x"]),
+                    int(papel["y"]),
+                    30,
+                    22
+                )
+
+                if player_rect.colliderect(papel_rect):
+
+                    jogo["vida_player"] -= 15
+
+                    jogo["vida_player"] = max(
+                        0,
+                        jogo["vida_player"]
+                    )
+
+                    jogo["tempo_invulnerabilidade"] = 60
+
+                    vilao.papeis.remove(papel)
+
+                    break
+
+        # -----------------------------------------------
         # GAME OVER
         # -----------------------------------------------
 
-        if jogo["player_y"] > ALTURA:
+        if (
+            jogo["player_y"] > ALTURA
+            or jogo["vida_player"] <= 0
+        ):
 
             salvar_ranking(
                 nome_jogador,
@@ -920,7 +1095,7 @@ while rodando:
             continue
 
         # -----------------------------------------------
-        # DESENHAR PRÉDIOS
+        # DESENHAR PREDIOS
         # -----------------------------------------------
 
         for predio in jogo["predios"]:
@@ -980,6 +1155,13 @@ while rodando:
         for teia in jogo["teias"]:
             teia.desenhar(tela)
 
+        # -----------------------------------------------
+        # DESENHAR VILAO 1
+        # -----------------------------------------------
+
+        if jogo["vilao1"] is not None:
+
+            jogo["vilao1"].desenhar(tela)
 
         # -----------------------------------------------
         # DESENHAR JOGADOR
@@ -996,7 +1178,20 @@ while rodando:
         )
 
         # -----------------------------------------------
-        # HUD
+        # EFEITO DE DISPARO DA TEIA
+        # -----------------------------------------------
+
+        if jogo["tempo_animacao_teia"] > 0:
+
+            desenhar_efeito_teia(
+                tela,
+                int(jogo["player_x"]),
+                int(jogo["player_y"]),
+                jogo["direcao_player"]
+            )
+
+        # -----------------------------------------------
+        # HUD: PONTOS E MOEDAS
         # -----------------------------------------------
 
         texto = fonte.render(
@@ -1013,6 +1208,88 @@ while rodando:
             (10, 10)
         )
 
+        # -----------------------------------------------
+        # BARRA DE VIDA DO PERSONAGEM
+        # -----------------------------------------------
+
+        pygame.draw.rect(
+            tela,
+            CINZA,
+            (10, 50, 205, 22),
+            border_radius=5
+        )
+
+        largura_vida = int(
+            200
+            * jogo["vida_player"]
+            / jogo["vida_maxima_player"]
+        )
+
+        if largura_vida > 0:
+
+            pygame.draw.rect(
+                tela,
+                VERDE,
+                (12, 52, largura_vida, 18),
+                border_radius=4
+            )
+
+        texto_vida = fonte.render(
+            "VIDA",
+            True,
+            BRANCO
+        )
+
+        tela.blit(
+            texto_vida,
+            (220, 48)
+        )
+
+        # -----------------------------------------------
+        # BARRA DE VIDA DO VILAO
+        # -----------------------------------------------
+
+        vilao = jogo["vilao1"]
+
+        if vilao is not None:
+
+            texto_vilao = fonte.render(
+                "VILAO 1",
+                True,
+                BRANCO
+            )
+
+            tela.blit(
+                texto_vilao,
+                (570, 10)
+            )
+
+            pygame.draw.rect(
+                tela,
+                CINZA,
+                (570, 45, 220, 22),
+                border_radius=5
+            )
+
+            largura_vida_vilao = int(
+                216
+                * vilao.vida
+                / vilao.vida_maxima
+            )
+
+            if largura_vida_vilao > 0:
+
+                pygame.draw.rect(
+                    tela,
+                    VERMELHO,
+                    (572, 47, largura_vida_vilao, 18),
+                    border_radius=4
+                )
+
+        # -----------------------------------------------
+        # CONTROLES
+        # -----------------------------------------------
+
         texto_teia = fonte.render(
             "F: LANCAR TEIA",
             True,
@@ -1021,7 +1298,7 @@ while rodando:
 
         tela.blit(
             texto_teia,
-            (10, 45)
+            (10, 82)
         )
 
     # =====================================================

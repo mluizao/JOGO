@@ -1,95 +1,311 @@
 
-import math
+import os
+import glob
 import pygame
+import math
 
 
 class AnimacaoPlayer:
 
     def __init__(self):
+
         self.tempo = 0.0
+        self.indice = 0
+        self.estado = "parado"
+
         self.escala_x = 1.0
         self.escala_y = 1.0
+
         self.no_chao = True
         self.vel_y = 0.0
 
+        self.velocidade_animacao = 0.12
+        self.contador = 0
+
+        self.animacoes = {}
+
+        self.direcao = 1
+
+        self.carregar_sprites()
+
+    # =====================================================
+    # CARREGAR AS SPRITES
+    # =====================================================
+
+    def carregar_sprites(self):
+
+        pasta_projeto = os.path.dirname(
+            os.path.abspath(__file__)
+        )
+
+        pasta_player = os.path.join(
+            pasta_projeto,
+            "assets",
+            "imagens",
+            "player"
+        )
+
+        nomes = [
+            "parado",
+            "correndo",
+            "pulando",
+            "caindo",
+            "teia",
+            "dano"
+        ]
+
+        for nome in nomes:
+
+            pasta_animacao = os.path.join(
+                pasta_player,
+                nome
+            )
+
+            arquivos = glob.glob(
+                os.path.join(pasta_animacao, "*.png")
+            )
+
+            arquivos.sort(
+                key=lambda caminho: int(
+                    os.path.splitext(
+                        os.path.basename(caminho)
+                    )[0].split("_")[-1]
+                )
+            )
+
+            quadros = []
+
+            for arquivo in arquivos:
+
+                imagem = pygame.image.load(
+                    arquivo
+                ).convert_alpha()
+
+                quadros.append(imagem)
+
+            if quadros:
+
+                self.animacoes[nome] = quadros
+
+                print(
+                    f"Animação {nome}: "
+                    f"{len(quadros)} sprites carregadas."
+                )
+
+            else:
+
+                print(
+                    f"ATENÇÃO: nenhuma sprite encontrada em {pasta_animacao}"
+                )
+
+        if "parado" not in self.animacoes:
+
+            raise FileNotFoundError(
+                "Não encontrei as sprites da pasta "
+                "assets/imagens/player/parado"
+            )
+
+    # =====================================================
+    # ESCOLHER ANIMAÇÃO
+    # =====================================================
+
+    def definir_estado(self, novo_estado):
+
+        if novo_estado not in self.animacoes:
+            return
+
+        if self.estado != novo_estado:
+
+            self.estado = novo_estado
+            self.indice = 0
+            self.contador = 0
+
+    # =====================================================
+    # POUSAR
+    # =====================================================
+
     def pousar(self, vel_impacto):
-        forca = min(max(vel_impacto, 0) / 15, 1.0)
+
+        forca = min(
+            max(vel_impacto, 0) / 15,
+            1.0
+        )
 
         if forca < 0.15:
             return
 
-        self.escala_x = 1.0 + 0.30 * forca
-        self.escala_y = 1.0 - 0.30 * forca
+        self.escala_x = 1.0 + 0.20 * forca
+        self.escala_y = 1.0 - 0.20 * forca
 
-    def atualizar(self, no_chao, vel_y, velocidade_mundo):
+    # =====================================================
+    # ATUALIZAR ANIMAÇÃO
+    # =====================================================
+
+    def atualizar(
+        self,
+        no_chao,
+        vel_y,
+        velocidade_mundo,
+        movendo=False,
+        atacando=False,
+        recebendo_dano=False
+    ):
+
         self.no_chao = no_chao
         self.vel_y = vel_y
 
-        if no_chao:
-            self.tempo += 0.18 + velocidade_mundo * 0.05
-            alvo_x, alvo_y = 1.0, 1.0
-        else:
-            esticar = min(abs(vel_y) / 25, 0.25)
-            alvo_x = 1.0 - esticar * 0.6
-            alvo_y = 1.0 + esticar
+        # Prioridade das animações.
+        if recebendo_dano:
 
-        self.escala_x += (alvo_x - self.escala_x) * 0.25
-        self.escala_y += (alvo_y - self.escala_y) * 0.25
+            novo_estado = "dano"
+
+        elif atacando:
+
+            novo_estado = "teia"
+
+        elif not no_chao:
+
+            if vel_y < 0:
+                novo_estado = "pulando"
+            else:
+                novo_estado = "caindo"
+
+        elif movendo:
+
+            novo_estado = "correndo"
+
+        else:
+
+            novo_estado = "parado"
+
+        self.definir_estado(novo_estado)
+
+        # Velocidade de cada animação.
+        if self.estado == "parado":
+            velocidade = 0.16
+
+        elif self.estado == "correndo":
+            velocidade = 0.14
+
+        elif self.estado == "teia":
+            velocidade = 0.13
+
+        elif self.estado == "dano":
+            velocidade = 0.15
+
+        else:
+            velocidade = 0.12
+
+        self.contador += velocidade
+
+        if self.contador >= 1:
+
+            self.indice += 1
+            self.contador = 0
+
+            quadros = self.animacoes.get(
+                self.estado,
+                []
+            )
+
+            if quadros:
+
+                if self.estado in ("dano", "teia"):
+
+                    if self.indice >= len(quadros):
+                        self.indice = len(quadros) - 1
+
+                else:
+
+                    self.indice %= len(quadros)
+
+        # Recuperar a escala depois do pouso.
+        alvo_x = 1.0
+        alvo_y = 1.0
+
+        self.escala_x += (
+            alvo_x - self.escala_x
+        ) * 0.25
+
+        self.escala_y += (
+            alvo_y - self.escala_y
+        ) * 0.25
+
+    # =====================================================
+    # DESENHAR PERSONAGEM
+    # =====================================================
 
     def desenhar(
         self,
         tela,
-        imagem,
-        x,
-        y,
+        imagem=None,
+        x=0,
+        y=0,
         tamanho=60,
         ajuste_pes=0,
         direcao=1
     ):
 
-        # Vira a imagem conforme a direção do jogador.
-        imagem = pygame.transform.flip(
-            imagem,
-            direcao == -1,
-            False
+        quadros = self.animacoes.get(
+            self.estado,
+            self.animacoes.get("parado", [])
         )
 
-        largura = max(1, int(imagem.get_width() * self.escala_x))
-        altura = max(1, int(imagem.get_height() * self.escala_y))
+        if not quadros:
+            return
 
-        img = pygame.transform.scale(
-            imagem,
+        indice = min(
+            self.indice,
+            len(quadros) - 1
+        )
+
+        imagem_atual = quadros[indice]
+
+        # Virar o personagem conforme a direção.
+        if direcao == -1:
+
+            imagem_atual = pygame.transform.flip(
+                imagem_atual,
+                True,
+                False
+            )
+
+        # Mantém a proporção da sprite.
+        largura_original = imagem_atual.get_width()
+        altura_original = imagem_atual.get_height()
+
+        proporcao = largura_original / altura_original
+
+        altura = int(tamanho * 1.25)
+        largura = int(altura * proporcao)
+
+        largura = max(1, int(largura * self.escala_x))
+        altura = max(1, int(altura * self.escala_y))
+
+        imagem_atual = pygame.transform.scale(
+            imagem_atual,
             (largura, altura)
         )
 
-        if self.no_chao:
-            onda = math.sin(self.tempo)
-            bob = -abs(onda) * 4
+        # Pequeno movimento de respiração quando parado.
+        bob = 0
 
-            # A inclinação acompanha a direção do movimento.
-            angulo = (-5 + onda * 3) * direcao
+        if self.estado == "parado":
 
-        else:
-            bob = 0
-            angulo = max(
-                -10,
-                min(10, -self.vel_y * 0.5)
-            ) * direcao
+            bob = math.sin(
+                pygame.time.get_ticks() * 0.004
+            ) * 1.5
 
-        img = pygame.transform.rotate(img, angulo)
+        # Posicionar mantendo os pés no mesmo lugar.
+        pos_x = x + tamanho / 2 - largura / 2
 
-        # Mantém o ponto de apoio nos pés.
-        rad = math.radians(angulo)
-
-        pivo_x = x + tamanho / 2
-        pivo_y = y + tamanho + bob + ajuste_pes
-
-        centro = (
-            pivo_x - (altura / 2) * math.sin(rad),
-            pivo_y - (altura / 2) * math.cos(rad)
+        pos_y = (
+            y + tamanho + ajuste_pes
+            - altura
+            + bob
         )
 
         tela.blit(
-            img,
-            img.get_rect(center=centro)
+            imagem_atual,
+            (int(pos_x), int(pos_y))
         )
